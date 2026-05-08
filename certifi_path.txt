@@ -1,0 +1,1 @@
+CERTIFI_PATH=C:\Users\alial\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\certifi\cacert.pem

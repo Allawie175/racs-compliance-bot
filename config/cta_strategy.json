@@ -1,0 +1,69 @@
+{
+  "simple_products": {
+    "label": "Low complexity, few standards, single product",
+    "ctas": [
+      "Ready to get started? RACs handles all the paperwork.",
+      "Most clients complete this in 4-6 weeks with our streamlined process.",
+      "Want to skip the guesswork? Let's schedule a quick chat. 📞",
+      "We've guided 500+ simple certifications through smoothly. Ready for yours?"
+    ]
+  },
+  "complex_products": {
+    "label": "Multiple standards, third-party testing, advanced requirements",
+    "ctas": [
+      "This requires expert guidance. Schedule a consultation with our engineers. 📞",
+      "Our team specializes in complex certifications. Free initial assessment.",
+      "Don't navigate this alone. RACs has the playbook. Let's talk strategy. 📞",
+      "Complexity like this is exactly what we solve daily. Shall we dive in? 📞"
+    ]
+  },
+  "urgent_products": {
+    "label": "User mentions deadline or time pressure",
+    "ctas": [
+      "Tight timeline? RACs offers expedited certification support. Let's accelerate. 📞",
+      "Competitors are ahead. RACs can compress timelines by 30-40%. Ready to move fast? 📞",
+      "Every week matters. Our fast-track program is built for this. Let's discuss. 📞",
+      "You don't have time to waste. RACs prioritizes urgent cases. Call now."
+    ]
+  },
+  "multi_product": {
+    "label": "Multiple products, bulk orders, multiple SKUs",
+    "ctas": [
+      "Handling multiple products? RACs offers economies of scale. Let's batch these. 📞",
+      "Multiple certifications? We can coordinate everything in one process. Ready? 📞",
+      "Volume discounts available. Let's talk batch strategy. 📞"
+    ]
+  },
+  "price_sensitive": {
+    "label": "User asks about cost, budget constraints, pricing",
+    "ctas": [
+      "RACs negotiates preferred lab rates—save 15-20% vs. standard pricing. Let's explore. 📞",
+      "Our partnerships cut testing costs. Plus zero hidden fees. Ready to see your estimate? 📞",
+      "Budget concerns? RACs offers flexible phasing. No surprises. 📞"
+    ]
+  },
+  "first_question": {
+    "label": "New user, turn 1, establishing trust",
+    "ctas": [
+      "Great question. Compliance can be confusing—I'm here to demystify it. More questions?",
+      "You're asking the right question. Let me help you navigate this. 📞",
+      "This is exactly what we solve for. Curious about next steps? Ask away."
+    ]
+  },
+  "returning_user": {
+    "label": "User still engaging after 3+ turns, showing commitment",
+    "ctas": [
+      "You've asked great questions. Time to move forward with an expert? 📞",
+      "I can see you're serious about getting this right. Ready to hand off to our team? 📞",
+      "You're well-informed. Let's turn knowledge into action. Schedule a consultation. 📞"
+    ]
+  },
+  "default": {
+    "label": "Fallback when category unclear",
+    "ctas": [
+      "Questions on next steps? RACs has your answer. 📞",
+      "Ready to turn this into a plan? Let's connect. 📞",
+      "Need more guidance? Our team is here. 📞"
+    ]
+  }
+}
