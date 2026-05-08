@@ -3,9 +3,6 @@
 import os
 import logging
 import sys
-import asyncio
-import ssl
-import certifi
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
@@ -267,31 +264,11 @@ Need help? Use `/contact` to reach our team directly."""
 
 def main():
     """Start the Telegram bot."""
-    # Ensure event loop exists on Windows
-    if sys.platform == 'win32':
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_closed():
-                asyncio.set_event_loop(asyncio.new_event_loop())
-        except RuntimeError:
-            asyncio.set_event_loop(asyncio.new_event_loop())
-
-    # Configure SSL certificates
-    os.environ['SSL_CERT_FILE'] = certifi.where()
-    os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
-
-    # Workaround for Windows SSL certificate verification issues
-    # Set environment variable to use certifi certs
-    os.environ['PYTHONHTTPSVERIFY'] = '1'
-
     token = os.getenv("TELEGRAM_BOT_TOKEN")
 
     if not token:
         print("ERROR: TELEGRAM_BOT_TOKEN not set in .env")
         sys.exit(1)
-
-    # Setup SSL context with proper certificates
-    ssl_context = ssl.create_default_context(cafile=certifi.where())
 
     # Create application
     application = Application.builder().token(token).build()
