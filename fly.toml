@@ -1,0 +1,15 @@
+# Fly.io configuration for RACs Compliance Bot
+app = "racs-compliance-bot"
+primary_region = "dfw"
+
+# Worker app (no web service needed)
+[[services]]
+internal_port = 8080
+protocol = "tcp"
+
+[build]
+dockerfile = "Dockerfile"
+
+[env]
+# Environment variables are set via `fly secrets set` after deployment
+PYTHONUNBUFFERED = "true"
