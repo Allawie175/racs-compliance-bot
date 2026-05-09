@@ -604,10 +604,11 @@ Keywords:"""
             prefix = r["hs_code"][:6] if len(r["hs_code"]) >= 6 else r["hs_code"]
             if prefix not in groups:
                 count = sum(1 for x in xds_results if x["hs_code"].startswith(prefix))
+                match_text = "match" if count == 1 else "matches"
                 groups[prefix] = {
                     "hs_code": prefix,
                     "product_name": r["product_name"],
-                    "reason": f"{count} XDS match(es)",
+                    "reason": f"{count} {match_text}",
                     "matches": []
                 }
             groups[prefix]["matches"].append(r)
