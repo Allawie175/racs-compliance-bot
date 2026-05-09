@@ -606,8 +606,14 @@ Primary Result from XDS:
             summary += "="*60 + "\n"
 
             # Include ALL sections in order, preserve original text formatting
+            if detail_data.get('hs_code_header'):
+                summary += f"\n{detail_data.get('hs_code_header')}\n"
+
             if detail_data.get('regulation_description'):
                 summary += f"\n{detail_data.get('regulation_description')}\n"
+
+            if detail_data.get('certificate_of_conformity'):
+                summary += f"\n{detail_data.get('certificate_of_conformity')}\n"
 
             if detail_data.get('products_covered'):
                 summary += f"\n{detail_data.get('products_covered')}\n"
@@ -620,6 +626,9 @@ Primary Result from XDS:
 
             if detail_data.get('additional_notes'):
                 summary += f"\n{detail_data.get('additional_notes')}\n"
+
+            if detail_data.get('disclaimer'):
+                summary += f"\n{detail_data.get('disclaimer')}\n"
 
         summary += "\n" + "="*60
         summary += "\nIMPORTANT: Include all sections above in your response.\n"

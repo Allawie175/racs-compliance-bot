@@ -171,20 +171,49 @@ class XDSQueryEngine:
 
             detail_dict = {}
 
-            # Extract regulation background (description before Products Covered)
+            # Extract HS Code header/description (FULL, no truncation)
+            if "HS Code Headers:" in all_text or "HS Code Header" in all_text:
+                start = all_text.find("HS Code Header")
+                if start != -1:
+                    # Find where the actual header description ends (before "Electrical transformers" or similar)
+                    end = all_text.find("This Saudi HS Code is covered", start)
+                    if end == -1:
+                        end = all_text.find("Certificate of Conformity", start)
+                    if end == -1:
+                        end = start + 500
+
+                    if end > start:
+                        header_text = all_text[start:end].strip()
+                        detail_dict["hs_code_header"] = header_text
+
+            # Extract regulation background (description before Products Covered) - FULL, NO TRUNCATION
             if "The Technical Regulation for" in all_text or "Technical Regulation for" in all_text:
-                # Find text between "Technical Regulation for" and "Products Covered"
+                # Find text between "Technical Regulation for" and "Certificate of Conformity" or "Products Covered"
                 start = all_text.find("Technical Regulation for")
                 if start != -1:
-                    end = all_text.find("Products Covered", start)
+                    end = all_text.find("Certificate of Conformity", start)
+                    if end == -1:
+                        end = all_text.find("Products Covered", start)
                     if end == -1:
                         end = all_text.find("Certification Requirements", start)
 
                     if end != -1:
                         regulation_text = all_text[start:end].strip()
-                        # Clean up and truncate to reasonable length
-                        regulation_text = regulation_text.replace("\n", " ")[:300]
+                        # NO TRUNCATION - preserve full text
                         detail_dict["regulation_description"] = regulation_text
+
+            # Extract Certificate of Conformity section (if exists before Products Covered)
+            if "Certificate of Conformity Requirements:" in all_text:
+                start = all_text.find("Certificate of Conformity Requirements:")
+                end = all_text.find("Products Covered", start)
+                if end == -1:
+                    end = all_text.find("Certification Requirements", start)
+                if end == -1:
+                    end = start + 1000
+
+                if end > start:
+                    cert_cof_text = all_text[start:end].strip()
+                    detail_dict["certificate_of_conformity"] = cert_cof_text
 
             # Extract products covered section (FULL, no truncation)
             if "Products Covered" in all_text:
@@ -223,16 +252,24 @@ class XDSQueryEngine:
                 classification_section = all_text[start:end].strip()
                 detail_dict["product_classification"] = classification_section
 
-            # Extract additional notes (FULL, no truncation)
+            # Extract additional notes after classification (FULL, no truncation)
             if "Note:" in all_text:
                 start = all_text.find("Note:")
-                # Take everything after the note
-                end = all_text.find("Please note", start)
+                # Take everything after the note until disclaimer
+                end = all_text.find("Please note that", start)
                 if end == -1:
                     end = len(all_text)
 
                 note_section = all_text[start:end].strip()
                 detail_dict["additional_notes"] = note_section
+
+            # Extract disclaimer (FULL, no truncation)
+            if "Please note that HS codes" in all_text:
+                start = all_text.find("Please note that HS codes")
+                end = len(all_text)
+
+                disclaimer = all_text[start:end].strip()
+                detail_dict["disclaimer"] = disclaimer
 
             return detail_dict if detail_dict else None
 
