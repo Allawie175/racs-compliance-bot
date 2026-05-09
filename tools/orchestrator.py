@@ -110,6 +110,23 @@ class Orchestrator:
         # Rule 2: If in discovery mode, handle sub-states (bypass intent detection)
         if state["mode"] == "discovery":
             disco = state["discovery"]
+
+            # Check if user is starting a NEW discovery request (reset and restart)
+            if self._is_new_discovery_request(user_message):
+                state["discovery"] = {
+                    "product_description": "",
+                    "clarifications": [],
+                    "clarification_count": 0,
+                    "proposed_hs_codes": [],
+                    "chosen_hs_code": None,
+                    "sub_code_options": [],
+                    "sub_code_question": None,
+                    "chosen_sub_code": None
+                }
+                response = self._handle_discovery_start(user_message, chat_id)
+                self._update_history(chat_id, user_message, response)
+                return response
+
             # Check in this order:
             # 1. If user picked a code and is waiting to narrow down sub-code, handle sub-code choice
             # 2. If we have proposals and user hasn't picked yet, handle their choice
@@ -621,6 +638,31 @@ Keywords:"""
             lines.append(f"Option {i}: {g['hs_code']} — {g['product_name']} ({g['reason']})")
         lines.append("\nWhich one best describes your product?")
         return "\n".join(lines)
+
+    def _is_new_discovery_request(self, user_message: str) -> bool:
+        """Check if user is starting a new discovery request while in discovery mode."""
+        msg_lower = user_message.lower().strip()
+
+        # Check for "I want to import X" pattern (new discovery request)
+        if msg_lower.startswith("i want to import "):
+            return True
+
+        # Check for explicit "new request" keywords
+        new_request_keywords = [
+            "new request",
+            "different product",
+            "cancel",
+            "start over",
+            "reset",
+            "new query",
+            "different import"
+        ]
+
+        for keyword in new_request_keywords:
+            if keyword in msg_lower:
+                return True
+
+        return False
 
     def _handle_direct_lookup(self, search_term: str, user_message: str, chat_id: str) -> str:
         """Direct HS code or product lookup."""
