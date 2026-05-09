@@ -134,8 +134,13 @@ class Orchestrator:
         try:
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=100,
-                system="You are a compliance search specialist. Extract the main product/regulation search term from the user's question. Return ONLY the search term (1-5 words), nothing else. If unclear, return empty string.",
+                max_tokens=50,
+                system="""Extract ONLY what the user wrote. Do NOT invent or add anything.
+- If user writes an HS code (digits), return exactly that HS code.
+- If user writes a product name, return exactly that product name.
+- If user writes a regulation name, return exactly that.
+- Do NOT add standards, codes, or context that weren't in the user's message.
+- Return ONLY the search term, nothing else.""",
                 messages=[{"role": "user", "content": user_message}]
             )
             print(f"[DEBUG] Claude response object: content_length={len(response.content)}, stop_reason={response.stop_reason}, output_tokens={response.usage.output_tokens}")
