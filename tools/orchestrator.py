@@ -486,6 +486,7 @@ CRITICAL: Respond with ONLY a valid JSON object. No markdown, no explanation, no
             return "I'm not sure which code you meant. Could you confirm the code number or option number?"
 
         disco["chosen_hs_code"] = chosen_code
+        disco["proposed_hs_codes"] = []  # Clear old proposals to prevent state machine re-entry
 
         # Search XDS for variants of this code
         print(f"[DEBUG] [{chat_id}] Searching XDS for variants of {chosen_code}")
@@ -621,17 +622,24 @@ Return ONLY the HS code of the best matching variant (e.g., "871160900000"). No 
         try:
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=15,
+                max_tokens=20,
                 timeout=10.0,
                 messages=[{
                     "role": "user",
-                    "content": f"""Extract the main product keyword(s) from this message for searching a customs database. Return ONLY 1-2 words, no punctuation.
+                    "content": f"""Extract the main product name/keyword from this message for searching a customs database.
+
+Return ONLY the product keyword (1-3 words), no punctuation, no articles. Expand abbreviations to full words.
+Examples:
+- "I want to import TVs" → television
+- "outdoor LED lights" → led luminaire
+- "electric motors" → electric motor
 
 Message: "{user_message}"
-Keywords:"""
+Keyword:"""
                 }]
             )
-            return response.content[0].text.strip()
+            keyword = response.content[0].text.strip()
+            return keyword
         except Exception as e:
             print(f"[ERROR] Keyword extraction failed: {e}")
             return ""
@@ -688,12 +696,34 @@ Keywords:"""
 
         return False
 
+    def _normalize_search_term(self, term: str) -> str:
+        """Normalize vague product terms to searchable keywords."""
+        term_lower = term.lower().strip()
+
+        # Expand common abbreviations to full product names
+        expansions = {
+            "tv": "television",
+            "tvs": "television",
+            "tv's": "television",
+            "led": "led light",
+            "motor": "electric motor",
+            "fridge": "refrigeration",
+        }
+
+        # Check if term (or first word) matches an abbreviation
+        for abbr, expanded in expansions.items():
+            if term_lower == abbr or term_lower.startswith(abbr + " "):
+                return term.replace(abbr, expanded, 1)
+
+        return term
+
     def _handle_direct_lookup(self, search_term: str, user_message: str, chat_id: str) -> str:
         """Direct HS code or product lookup."""
         state = self.chat_state[chat_id]
 
-        # Clean search term
+        # Clean and normalize search term
         search_term = search_term.strip().replace("```", "").replace("\n", "")
+        search_term = self._normalize_search_term(search_term)
         print(f"[DEBUG] [{chat_id}] Direct lookup for: {search_term}")
 
         # Query XDS
@@ -701,6 +731,12 @@ Keywords:"""
         print(f"[DEBUG] [{chat_id}] XDS returned {len(xds_results)} results")
         if xds_results:
             print(f"[DEBUG] [{chat_id}] First result: {xds_results[0]}")
+
+        # If no results on direct search, fall back to discovery mode (ask clarifications)
+        if not xds_results:
+            print(f"[DEBUG] [{chat_id}] No XDS results, falling back to discovery mode")
+            state["mode"] = "discovery"
+            return self._handle_discovery_start(user_message, chat_id)
 
         # Fetch detail if available
         detail_data = None
