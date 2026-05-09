@@ -76,7 +76,10 @@ class Orchestrator:
                     "clarifications": [],         # [{"question": ..., "answer": ...}]
                     "clarification_count": 0,
                     "proposed_hs_codes": [],      # [{"hs_code": ..., "product_name": ..., "reason": ...}]
-                    "chosen_hs_code": None
+                    "chosen_hs_code": None,       # 6-digit code chosen by user
+                    "sub_code_options": [],       # XDS search results for chosen_hs_code variants
+                    "sub_code_question": None,    # Claude-generated narrowing question
+                    "chosen_sub_code": None       # final 10-digit code selected
                 },
                 "lead": {
                     "awaiting": None,             # "name" | "email" | "phone" | None
@@ -106,10 +109,15 @@ class Orchestrator:
 
         # Rule 2: If in discovery mode, handle sub-states (bypass intent detection)
         if state["mode"] == "discovery":
+            disco = state["discovery"]
             # Check in this order:
-            # 1. If we have proposals and user hasn't picked yet, handle their choice
-            # 2. Otherwise, gather clarifications (auto-generates proposals when we have 2)
-            if state["discovery"]["proposed_hs_codes"] and not state["discovery"]["chosen_hs_code"]:
+            # 1. If user picked a code and is waiting to narrow down sub-code, handle sub-code choice
+            # 2. If we have proposals and user hasn't picked yet, handle their choice
+            # 3. Otherwise, gather clarifications (auto-generates proposals when we have 2)
+            if disco.get("chosen_hs_code") and disco.get("sub_code_question") and not disco.get("chosen_sub_code"):
+                # Sub-state: user is answering the sub-code clarification question
+                response = self._handle_sub_code_choice(user_message, chat_id)
+            elif disco["proposed_hs_codes"] and not disco["chosen_hs_code"]:
                 # Sub-state: user is picking an HS code
                 response = self._handle_discovery_choice(user_message, chat_id)
             else:
@@ -410,7 +418,7 @@ CRITICAL: Respond with ONLY a valid JSON object. No markdown, no explanation, no
             return "I'm having trouble narrowing down the exact code. Let me connect you with a specialist to confirm. Sound good?"
 
     def _handle_discovery_choice(self, user_message: str, chat_id: str) -> str:
-        """User picked an HS code. Query XDS immediately."""
+        """User picked an HS code. Search XDS for variants and ask sub-code clarification if needed."""
         state = self.chat_state[chat_id]
         disco = state["discovery"]
 
@@ -428,10 +436,133 @@ CRITICAL: Respond with ONLY a valid JSON object. No markdown, no explanation, no
             return "I'm not sure which code you meant. Could you confirm the code number or option number?"
 
         disco["chosen_hs_code"] = chosen_code
-        state["mode"] = "idle"
 
-        # Immediately query XDS with the chosen code
-        return self._handle_direct_lookup(chosen_code, f"I want to import products with HS code {chosen_code}", chat_id)
+        # Search XDS for variants of this code
+        print(f"[DEBUG] [{chat_id}] Searching XDS for variants of {chosen_code}")
+        xds_results = XDSQueryEngine.search(chosen_code)
+        disco["sub_code_options"] = xds_results
+        print(f"[DEBUG] [{chat_id}] Found {len(xds_results)} XDS variants")
+
+        # If only 1 result or no results, skip sub-code question and go directly to detail
+        if len(xds_results) <= 1:
+            print(f"[DEBUG] [{chat_id}] Only 1 or 0 variants, skipping sub-code clarification")
+            state["mode"] = "idle"
+            return self._handle_direct_lookup(chosen_code, f"I want to import products with HS code {chosen_code}", chat_id)
+
+        # Multiple variants found, ask a clarifying question
+        print(f"[DEBUG] [{chat_id}] Multiple variants found, asking sub-code clarification")
+        return self._ask_sub_code_clarification(chat_id)
+
+    def _ask_sub_code_clarification(self, chat_id: str) -> str:
+        """Claude generates a smart clarification question to narrow down the sub-code."""
+        state = self.chat_state[chat_id]
+        disco = state["discovery"]
+
+        # Build context about the variants
+        variants_text = "\n".join([
+            f"- {r.get('hs_code', '')}: {r.get('product_name', '')} ({r.get('regulation', '')})"
+            for r in disco["sub_code_options"]
+        ])
+
+        # Build context about clarifications so far
+        clarifications_text = "\n".join([
+            f"Q: {c.get('question', 'N/A')}\nA: {c.get('answer', '')}"
+            for c in disco["clarifications"]
+        ])
+
+        print(f"[DEBUG] [{chat_id}] Generating sub-code clarification question")
+        print(f"[DEBUG] [{chat_id}] Product: {disco['product_description']}")
+        print(f"[DEBUG] [{chat_id}] Variants found: {len(disco['sub_code_options'])}")
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=120,
+                messages=[{
+                    "role": "user",
+                    "content": f"""User wants to import: {disco['product_description']}
+
+Prior clarifications:
+{clarifications_text}
+
+HS code {disco['chosen_hs_code']} has these variants in XDS:
+{variants_text}
+
+Generate ONE short clarifying question to determine which variant matches the user's product.
+Return ONLY the question text, no preamble."""
+                }]
+            )
+
+            question = response.content[0].text.strip()
+            disco["sub_code_question"] = question
+            print(f"[DEBUG] [{chat_id}] Generated question: {question}")
+            return question
+
+        except Exception as e:
+            print(f"[ERROR] [{chat_id}] Sub-code clarification generation failed: {e}")
+            import traceback
+            traceback.print_exc()
+            # Fall back to simple question
+            state["mode"] = "idle"
+            return self._handle_direct_lookup(disco["chosen_hs_code"], f"HS code {disco['chosen_hs_code']}", chat_id)
+
+    def _handle_sub_code_choice(self, user_message: str, chat_id: str) -> str:
+        """User answered the sub-code clarification question. Match to best variant and proceed to detail."""
+        state = self.chat_state[chat_id]
+        disco = state["discovery"]
+
+        # Build list of variants for Claude to match
+        variants_text = "\n".join([
+            f"- {r.get('hs_code', '')}: {r.get('product_name', '')}"
+            for r in disco["sub_code_options"]
+        ])
+
+        print(f"[DEBUG] [{chat_id}] Matching user answer to sub-code variant")
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=80,
+                messages=[{
+                    "role": "user",
+                    "content": f"""Question asked: {disco['sub_code_question']}
+User answered: {user_message}
+
+Available variants:
+{variants_text}
+
+Return ONLY the HS code of the best matching variant (e.g., "871160900000"). No other text."""
+                }]
+            )
+
+            chosen_sub_code = response.content[0].text.strip()
+            print(f"[DEBUG] [{chat_id}] Claude selected sub-code: {chosen_sub_code}")
+
+            # Validate it's actually one of our options
+            valid_codes = [r.get("hs_code", "") for r in disco["sub_code_options"]]
+            if chosen_sub_code not in valid_codes:
+                print(f"[DEBUG] [{chat_id}] Invalid sub-code '{chosen_sub_code}', falling back to first option")
+                chosen_sub_code = valid_codes[0] if valid_codes else disco["chosen_hs_code"]
+
+            disco["chosen_sub_code"] = chosen_sub_code
+            state["mode"] = "idle"
+
+            # Proceed to XDS detail lookup with the chosen sub-code
+            return self._handle_direct_lookup(
+                chosen_sub_code,
+                f"I want to import products with HS code {chosen_sub_code}",
+                chat_id
+            )
+
+        except Exception as e:
+            print(f"[ERROR] [{chat_id}] Sub-code choice matching failed: {e}")
+            import traceback
+            traceback.print_exc()
+            # Fall back to first option
+            first_code = disco["sub_code_options"][0].get("hs_code", "") if disco["sub_code_options"] else disco["chosen_hs_code"]
+            disco["chosen_sub_code"] = first_code
+            state["mode"] = "idle"
+            return self._handle_direct_lookup(first_code, f"HS code {first_code}", chat_id)
 
     def _handle_direct_lookup(self, search_term: str, user_message: str, chat_id: str) -> str:
         """Direct HS code or product lookup."""
