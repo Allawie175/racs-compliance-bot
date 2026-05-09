@@ -454,13 +454,26 @@ CRITICAL: Respond with ONLY a valid JSON object. No markdown, no explanation, no
         chosen_code = None
         user_lower = user_message.lower().strip()
 
+        # First, try to match by option number (e.g., "Option 1", "option 1", "1")
         for i, cand in enumerate(disco["proposed_hs_codes"], 1):
             code = cand.get("hs_code", "")
-            if code in user_message or f"option {i}" in user_lower:
+            # Check for exact option number match: "option 1", "option 1:", "1.", " 1 ", etc.
+            if f"option {i}" in user_lower or f"{i}" in user_lower.split():
                 chosen_code = code
+                print(f"[DEBUG] [{chat_id}] Matched option {i} -> {code}")
                 break
 
+        # If no match by option number, try to match by code itself
         if not chosen_code:
+            for i, cand in enumerate(disco["proposed_hs_codes"], 1):
+                code = cand.get("hs_code", "")
+                if code and code in user_message:
+                    chosen_code = code
+                    print(f"[DEBUG] [{chat_id}] Matched code {code}")
+                    break
+
+        if not chosen_code:
+            print(f"[DEBUG] [{chat_id}] No match found for: '{user_message}'. Proposed codes: {[c.get('hs_code', '') for c in disco['proposed_hs_codes']]}")
             return "I'm not sure which code you meant. Could you confirm the code number or option number?"
 
         disco["chosen_hs_code"] = chosen_code
