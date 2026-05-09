@@ -478,6 +478,7 @@ CRITICAL: Respond with ONLY a valid JSON object. No markdown, no explanation, no
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=120,
+                timeout=15.0,  # 15 second timeout to prevent hanging
                 messages=[{
                     "role": "user",
                     "content": f"""User wants to import: {disco['product_description']}
@@ -523,6 +524,7 @@ Return ONLY the question text, no preamble."""
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=80,
+                timeout=15.0,  # 15 second timeout to prevent hanging
                 messages=[{
                     "role": "user",
                     "content": f"""Question asked: {disco['sub_code_question']}
