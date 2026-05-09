@@ -88,24 +88,24 @@ class Orchestrator:
 
         # Step 1: Extract search term from user message
         search_term = self._extract_search_term(user_message)
-        logger.info(f"[{chat_id}] Extracted search term: {search_term}")
+        print(f"[DEBUG] [{chat_id}] Extracted search term: {search_term}")
 
         if not search_term:
-            logger.warning(f"[{chat_id}] Could not extract search term from: {user_message}")
+            print(f"[DEBUG] [{chat_id}] Could not extract search term from: {user_message}")
             return self._fallback_response("I couldn't understand your question. "
                                           "Could you tell me more about the product you're importing?")
 
         # Step 2: Query XDS (hidden from user)
         xds_results = XDSQueryEngine.search(search_term)
-        logger.info(f"[{chat_id}] XDS returned {len(xds_results)} results for '{search_term}'")
+        print(f"[DEBUG] [{chat_id}] XDS returned {len(xds_results)} results for '{search_term}'")
         if xds_results:
-            logger.info(f"[{chat_id}] First result: {xds_results[0]}")
+            print(f"[DEBUG] [{chat_id}] First result: {xds_results[0]}")
 
         # Step 3: Fetch detail if we got a result
         detail_data = None
         if xds_results and xds_results[0].get("detail_url"):
             detail_data = XDSQueryEngine.get_detail(xds_results[0]["detail_url"])
-            logger.info(f"[{chat_id}] Detail page fetched: {bool(detail_data)}")
+            print(f"[DEBUG] [{chat_id}] Detail page fetched: {bool(detail_data)}")
 
         # Step 4: Synthesize into RACs voice
         response = self._synthesize_response(
@@ -158,7 +158,7 @@ class Orchestrator:
         """
         # Prepare XDS data summary
         xds_summary = self._format_xds_data(xds_results, detail_data)
-        logger.info(f"[{chat_id}] XDS summary:\n{xds_summary}")
+        print(f"[DEBUG] [{chat_id}] XDS summary:\n{xds_summary}")
 
         # Get conversation history for context
         history = self.conversation_history.get(chat_id, [])
@@ -217,10 +217,10 @@ Provide ONLY the RACs response, no preamble. Include exactly one CTA at the end.
                 messages=[{"role": "user", "content": user_message}]
             )
             synthesized = response.content[0].text.strip()
-            logger.info(f"[{chat_id}] Claude synthesized response (first 200 chars): {synthesized[:200]}")
+            print(f"[DEBUG] [{chat_id}] Claude response (first 300 chars): {synthesized[:300]}")
             return synthesized
         except Exception as e:
-            logger.error(f"[{chat_id}] Error synthesizing response: {e}")
+            print(f"[DEBUG] [{chat_id}] Error synthesizing response: {e}")
             return self._fallback_response(user_message)
 
     def _format_xds_data(self, xds_results: list, detail_data: Optional[dict]) -> str:
