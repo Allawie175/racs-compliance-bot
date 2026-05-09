@@ -29,7 +29,29 @@ class Orchestrator:
     """
 
     def __init__(self):
-        self.client = Anthropic()
+        import warnings
+        # Suppress warnings during Anthropic client initialization
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            try:
+                self.client = Anthropic()
+            except TypeError as e:
+                if "proxies" in str(e):
+                    # Work around Anthropic SDK proxy detection issue
+                    import os
+                    # Temporarily disable proxy environment variables
+                    proxy_vars = {}
+                    for var in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
+                        if var in os.environ:
+                            proxy_vars[var] = os.environ.pop(var)
+                    try:
+                        self.client = Anthropic()
+                    finally:
+                        # Restore proxy environment variables
+                        for var, val in proxy_vars.items():
+                            os.environ[var] = val
+                else:
+                    raise
         self.model = "claude-sonnet-4-6"
         # Per-chat conversation history for multi-turn context
         self.conversation_history: dict[str, list] = {}
