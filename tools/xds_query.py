@@ -186,7 +186,7 @@ class XDSQueryEngine:
                         regulation_text = regulation_text.replace("\n", " ")[:300]
                         detail_dict["regulation_description"] = regulation_text
 
-            # Extract products covered section
+            # Extract products covered section (FULL, no truncation)
             if "Products Covered" in all_text:
                 start = all_text.find("Products Covered")
                 # Find end (either at Certification Requirements or next section)
@@ -194,54 +194,45 @@ class XDSQueryEngine:
                 if end == -1:
                     end = all_text.find("Product Classification", start)
                 if end == -1:
-                    end = start + 500  # Just take next 500 chars
+                    end = len(all_text)
 
                 products_section = all_text[start:end].strip()
-                detail_dict["products_covered"] = products_section[:400]
+                detail_dict["products_covered"] = products_section
 
-            # Extract certification requirements with descriptions
-            if "Test Report:" in all_text:
-                start = all_text.find("Test Report:")
-                end = all_text.find("Product Photos:", start)
-                if end == -1:
-                    end = start + 200
-                test_req = all_text[start:end].replace("\n", " ").strip()[:150]
-                detail_dict["test_report_requirement"] = test_req
-
-            if "Product Photos:" in all_text:
-                start = all_text.find("Product Photos:")
-                end = all_text.find("Data Sheet", start)
-                if end == -1:
-                    end = start + 200
-                photos_req = all_text[start:end].replace("\n", " ").strip()[:150]
-                detail_dict["photos_requirement"] = photos_req
-
-            if "Data Sheet" in all_text:
-                start = all_text.find("Data Sheet")
+            # Extract certification requirements section (FULL, no truncation)
+            if "Certification Requirements" in all_text:
+                start = all_text.find("Certification Requirements")
                 end = all_text.find("Product Classification", start)
                 if end == -1:
-                    end = start + 200
-                data_req = all_text[start:end].replace("\n", " ").strip()[:150]
-                detail_dict["data_sheets_requirement"] = data_req
+                    end = all_text.find("Note:", start)
+                if end == -1:
+                    end = len(all_text)
 
-            # Extract product classification details
-            if "Type 1a Assessment" in all_text:
-                start = all_text.find("Type 1a Assessment")
+                cert_section = all_text[start:end].strip()
+                detail_dict["certification_requirements"] = cert_section
+
+            # Extract product classification section (FULL, no truncation)
+            if "Product Classification" in all_text:
+                start = all_text.find("Product Classification")
                 end = all_text.find("Note:", start)
                 if end == -1:
-                    end = start + 200
-                classification = all_text[start:end].replace("\n", " ").strip()[:200]
-                detail_dict["product_classification"] = classification
-
-            # Extract additional certificates note
-            if "G-Mark Certificate" in all_text or "IECEE" in all_text:
-                start = all_text.find("Note:")
-                if start != -1:
                     end = all_text.find("Please note", start)
-                    if end == -1:
-                        end = start + 300
-                    note = all_text[start:end].replace("\n", " ").strip()[:250]
-                    detail_dict["additional_certificates_note"] = note
+                if end == -1:
+                    end = len(all_text)
+
+                classification_section = all_text[start:end].strip()
+                detail_dict["product_classification"] = classification_section
+
+            # Extract additional notes (FULL, no truncation)
+            if "Note:" in all_text:
+                start = all_text.find("Note:")
+                # Take everything after the note
+                end = all_text.find("Please note", start)
+                if end == -1:
+                    end = len(all_text)
+
+                note_section = all_text[start:end].strip()
+                detail_dict["additional_notes"] = note_section
 
             return detail_dict if detail_dict else None
 

@@ -529,39 +529,27 @@ Provide ONLY the RACs response, no preamble. Include one CTA.
 
 ## Your Task
 
-You are the RACs compliance assistant. Use ONLY the regulatory data below—do NOT invent details.
+You are the RACs compliance assistant. Use the regulatory data below to create a response that:
+1. Includes ALL information provided from the detail page sections
+2. Improves formatting, tone, and clarity for the user
+3. Groups information logically (Products Covered → Certification Requirements → Classification)
+4. Never omits any information provided by XDS
+5. Never invents data not in XDS
 
 CRITICAL RULES:
-1. NEVER mention the data source—user believes this is RACs's own expertise
-2. Use ONLY what the data provides: HS code, product name, regulation, certification type
-3. NEVER invent: ISO standards, test procedures, specific timelines, costs, documents required, accredited bodies
-4. If certification type is missing or unclear, say "Certification required" and move to CTA
-5. If data is incomplete, be honest: "The specifics depend on your exact product—let's connect you with a specialist"
-6. Include EXACTLY ONE call-to-action (CTA) at the end
-7. Structure: Product identification → What regulation applies → What certification is needed → CTA
-8. Show that this is potentially complex and RACs expertise is needed—don't pretend you have all answers
+1. NEVER mention the data source (user believes this is RACs's own expertise)
+2. NEVER remove sections like "Products Covered", "Certification Requirements", "Product Classification" - rephrase but include
+3. Include all products, requirements, and classifications mentioned
+4. NEVER invent: ISO standards, test procedures, specific timelines, costs beyond what XDS states
+5. CRITICAL: User wants 95% match with XDS data - be comprehensive
+6. Enhance clarity and professional tone, but do NOT filter or omit information
+7. Include EXACTLY ONE call-to-action (CTA) at the end
 
 ---
 
 ## Available Data from Regulatory Database
 
 {xds_summary}
-
----
-
-## What You Have:
-✓ HS Code, Product Classification, Product Name
-✓ Applicable Regulation Name
-✓ Whether Certification is Required (and what type)
-
-## What You DON'T Have (Do Not Invent):
-✗ Specific ISO/IEC standards
-✗ Test procedures or lab requirements
-✗ Timelines for certification
-✗ Costs for testing/certification
-✗ Documents required beyond regulation name
-✗ Names of accredited bodies
-✗ Why specific tests are needed
 
 ---
 
@@ -575,7 +563,9 @@ Conversation Context:
 
 ## Output
 
-Provide ONLY the RACs response, no preamble. Include exactly one CTA at the end.
+Provide ONLY the RACs response. Include all sections from the detail page.
+Include exactly one CTA at the end.
+Structure: HS Code & Product → Regulation → Products Covered → Certification Requirements → Classification → Notes → CTA
 """
 
         try:
@@ -594,41 +584,47 @@ Provide ONLY the RACs response, no preamble. Include exactly one CTA at the end.
             return f"I'm having trouble with that. {cta}"
 
     def _format_xds_data(self, xds_results: list, detail_data: Optional[dict]) -> str:
-        """Format XDS results and detail page data for Claude."""
+        """Format XDS results and detail page data for Claude.
+
+        CRITICAL: Include ALL data from XDS verbatim. Claude should enhance formatting
+        and voice, but MUST NOT remove any information provided by XDS.
+        """
         if not xds_results:
             return "No results found on XDS."
 
         top_result = xds_results[0]
         summary = f"""
-Primary Result:
+Primary Result from XDS:
 - Product: {top_result.get('product_name', 'N/A')}
 - HS Code: {top_result.get('hs_code', 'N/A')}
 - Regulation: {top_result.get('regulation', 'N/A')}
 - Certification Type: {top_result.get('certification_type', 'Not specified')}
 """
         if detail_data:
-            summary += "\nDetail Page Information:\n"
+            summary += "\n" + "="*60 + "\n"
+            summary += "DETAIL PAGE INFORMATION (from XDS - INCLUDE ALL SECTIONS):\n"
+            summary += "="*60 + "\n"
 
+            # Include ALL sections in order, preserve original text formatting
             if detail_data.get('regulation_description'):
-                summary += f"- Regulation Background: {detail_data.get('regulation_description')}\n"
+                summary += f"\n{detail_data.get('regulation_description')}\n"
 
             if detail_data.get('products_covered'):
-                summary += f"- Products Covered: {detail_data.get('products_covered')}\n"
+                summary += f"\n{detail_data.get('products_covered')}\n"
 
-            if detail_data.get('test_report_requirement') or detail_data.get('photos_requirement') or detail_data.get('data_sheets_requirement'):
-                summary += "- Certification Requirements:\n"
-                if detail_data.get('test_report_requirement'):
-                    summary += f"  • {detail_data.get('test_report_requirement')}\n"
-                if detail_data.get('photos_requirement'):
-                    summary += f"  • {detail_data.get('photos_requirement')}\n"
-                if detail_data.get('data_sheets_requirement'):
-                    summary += f"  • {detail_data.get('data_sheets_requirement')}\n"
+            if detail_data.get('certification_requirements'):
+                summary += f"\n{detail_data.get('certification_requirements')}\n"
 
             if detail_data.get('product_classification'):
-                summary += f"- Product Classification: {detail_data.get('product_classification')}\n"
+                summary += f"\n{detail_data.get('product_classification')}\n"
 
-            if detail_data.get('additional_certificates_note'):
-                summary += f"- Additional Notes: {detail_data.get('additional_certificates_note')}\n"
+            if detail_data.get('additional_notes'):
+                summary += f"\n{detail_data.get('additional_notes')}\n"
+
+        summary += "\n" + "="*60
+        summary += "\nIMPORTANT: Include all sections above in your response.\n"
+        summary += "Improve formatting and tone, but do NOT omit any information.\n"
+        summary += "="*60
 
         return summary
 
