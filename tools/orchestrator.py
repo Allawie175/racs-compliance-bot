@@ -874,8 +874,15 @@ Primary Result from XDS:
             if detail_data.get('disclaimer'):
                 summary += f"\n{detail_data.get('disclaimer')}\n"
 
+            # If specific sections weren't found but page has content, include raw content
+            if detail_data.get('raw_page_content') and not detail_data.get('products_covered'):
+                summary += f"\n{'='*60}\n"
+                summary += "PAGE CONTENT FROM XDS:\n"
+                summary += f"{'='*60}\n"
+                summary += f"\n{detail_data.get('raw_page_content')}\n"
+
         summary += "\n" + "="*60
-        summary += "\nIMPORTANT: Include all sections above in your response.\n"
+        summary += "\nIMPORTANT: Include all sections/information above in your response.\n"
         summary += "Improve formatting and tone, but do NOT omit any information.\n"
         summary += "="*60
 
