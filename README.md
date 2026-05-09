@@ -5,30 +5,29 @@ A white-label compliance assistant that converts curious users into qualified le
 ## Overview
 
 ### What It Does
-- **User sees**: RACs's own compliance expertise
-- **We do**: Query XDS's regulatory database invisibly
-- **Result**: Accurate compliance guidance + strategic CTAs to drive consultations
+- **User sees**: Natural conversation with a compliance expert, no commands needed
+- **We do**: Detect intent, query XDS invisibly, synthesize into RACs voice
+- **Result**: Seamless compliance guidance + lead conversion
 
-### Architecture
+### Architecture (Intent-Driven)
 
 ```
-User Question (Telegram)
+User Message (Telegram) — Natural conversation, no commands
          ↓
-    RACs Bot (Branded Frontend)
+    Claude Intent Detector
+         ├── greeting → welcome
+         ├── discovery → ask clarifying questions → propose HS codes → query XDS
+         ├── direct_lookup → query XDS immediately
+         ├── followup → answer from context
+         ├── lead_capture → name → email → phone → Airtable
+         └── contact_info → show RACs contact details
          ↓
- Claude Orchestrator (Decision Engine)
-         ├── Extract search term
-         ├── Query XDS (hidden)
+    RACs Orchestrator
+         ├── Query XDS (if needed)
          ├── Synthesize into RACs voice
          └── Select contextual CTA
          ↓
-    Format Response
-         ↓
-   Telegram User
-  (Sees RACs expertise, CTA, and contact info)
-         ↓
-    [Optional: Lead Capture → Airtable]
-```
+   Telegram User (Sees professional response + single CTA)
 
 ## Components
 
@@ -120,79 +119,137 @@ Expected output:
 Press Ctrl+C to stop.
 ```
 
-Open Telegram, find your bot, and test:
-- `/start` — Welcome message
-- `/ask What do I need to import electric scooters?` — Full compliance answer
-- `/contact` — RACs contact info
-- `/help` — Usage guide
+Open Telegram, find your bot, and test (just type naturally — no commands needed):
+- `hello` or `hi` → Bot gives warm welcome
+- `I want to import fabric but not sure about HS code` → Bot asks clarifications, proposes codes
+- `850410000000` → Bot queries regulations immediately
+- `connect me with a specialist` → Bot asks for name/email/phone
 
-## Usage Example
+## Usage Examples
 
-### User Interaction
+### Example 1: Discovery Mode (User doesn't know HS code)
 
 ```
 User:
-/ask I'm importing lithium battery packs. What's required?
+I want to import LED displays for commercial use, but I'm not sure about the HS code.
 
 Bot:
-🔋 Lithium battery certification is multi-layered because it touches 
-   transportation, electrical safety, AND chemical hazards.
+Great! I'll help you find the right code. A few quick questions:
 
-Here's the real picture:
-✓ Certification Type: Type B (Third-party assessment required)
-✓ Standards: IEC 62619 (safety), UN 38.3 (transport regs), TSE certification
-✓ Testing: 15-20 lab tests across chemistry, thermal, safety
-✓ Timeline: 12-16 weeks (not faster without exemptions)
-✓ Cost: $15K-$35K depending on battery chemistry
-
-The bottleneck is usually sourcing an accredited testing lab fast enough. 
-Most importers lose 4-6 weeks just on vendor selection.
-
-RACs has pre-vetted lab relationships and can cut that search time to a phone call. 
-Plus, we know exactly which test sequence passes first time.
-
-Tight timeline? Let's explore expedited options. 📞 Schedule a consultation
-
----
+Are these LED displays fixed installations (like billboards) or portable units?
 
 User:
-What if I expedite?
+Fixed installations, like digital signage.
 
 Bot:
-Expedited programs available at 150% cost but reduce timeline to 2 weeks. 
-RACs partnerships with labs allow fast-track testing. Many of our clients 
-complete import within 3 weeks total.
-
-Want to discuss options? Your RACs compliance specialist is ready. 📞 +966-XX-XXXX-XXXX
-
----
+Got it. Are these using modular LED panels or complete integrated units?
 
 User:
-Yes, connect me with someone
+Modular panels that can be configured.
 
 Bot:
-Great! I'll connect you with a RACs specialist.
+Based on what you've told me, here are the likely HS codes:
 
-What's your name?
+**Option 1: 940360**
+Product: Parts and accessories for electric lighting fixtures
+Why: Generic LED lighting component classification
 
-[Leads to lead capture → Airtable submission → Sales follow-up]
+**Option 2: 854380**
+Product: Light emitting diodes (LED)
+Why: Specific LED component classification
+
+**Option 3: 852921**
+Product: Parts of electronic switching devices
+Why: If these have integrated control circuitry
+
+Which one sounds right? (Just reply with the option number or the HS code)
+
+User:
+Option 2
+
+Bot:
+Perfect! Let me check the regulations for LED components...
+
+[Bot queries XDS with 854380, returns regulations]
+
+⚡ LED modules fall under the **Technical Regulation for Electrical Products**...
 ```
+
+### Example 2: Direct HS Code Lookup
+
+```
+User:
+I have HS code 8517120000. What's required to import this to Saudi Arabia?
+
+Bot:
+[Bot immediately queries XDS with 8517120000]
+
+📱 Telephone switching equipment requires **SABER Certification**...
+```
+
+### Example 3: Lead Capture
+
+```
+User:
+Can you connect me with a specialist? This is getting complex.
+
+Bot:
+I'd love to connect you with a RACs specialist. What's your name?
+
+User:
+Ahmed Al-Rashid
+
+Bot:
+Thanks, Ahmed! What's your email address?
+
+User:
+ahmed@importco.example
+
+Bot:
+And your phone number?
+
+User:
++966-50-1234567
+
+Bot:
+✅ Thank you, Ahmed!
+
+A RACs specialist will reach out to you at ahmed@importco.example or +966-50-1234567 
+within 24 hours.
+
+Looking forward to helping you navigate Saudi Arabia's import requirements.
+```
+
+## How the Bot Works: Intent Detection
+
+The bot automatically detects what you want to do, no commands needed:
+
+| Intent | Triggered by | Bot Response |
+|--------|---|---|
+| **Greeting** | "hi", "hello", "hey", starting fresh | Warm welcome explaining capabilities |
+| **Discovery** | "I want to import X but don't know the HS code" | Ask 2 clarifying questions → propose 2-3 codes → query XDS when user picks one |
+| **Direct Lookup** | "8517120000" or "lithium batteries" | Query XDS immediately, return regulations |
+| **Follow-up** | "What about timeline?", "Will this cost more?" | Answer from conversation context, reference prior XDS data |
+| **Lead Capture** | "connect me", "call me", "I want to speak to someone" | Collect name → email → phone → submit to Airtable |
+| **Contact Info** | "How do I reach RACs?" | Show phone, email, Calendly link |
 
 ## Brand Voice
 
 The bot speaks like a **trusted compliance expert**, not a generic AI.
 
 ### ✓ Do This
-- Be specific ("4-8 weeks", not "varies")
-- Acknowledge pain points (acknowledge complexity, cost, timeline)
-- Show RACs value (explain what we do differently)
-- Include exact one CTA per response
+- **Use only XDS data** — be accurate, not inventive
+- Acknowledge regulatory complexity and RACs value
+- Be honest about unknowns: "The specifics depend on your exact product"
+- Include exactly ONE CTA per response
+- Feel like a human consultant, not an AI
 
 ### ✗ Don't Do This
-- Mention XDS (we're RACs)
-- Use jargon without explanation
-- Skip timeline/cost estimates
-- Repeat the same CTA twice
+- Mention XDS as a data source (user believes this is RACs expertise)
+- Invent timelines, costs, or testing procedures
+- Use unexplained jargon
+- Repeat CTAs or mention multiple contact methods in one message
+- Pretend to have all answers — escalate to specialists when appropriate
 
 [Full brand guidelines in `brand/racs_voice.md`]
 
@@ -295,13 +352,14 @@ LOG_LEVEL=DEBUG python bot/telegram_bot.py
 
 ### Production Checklist
 
-- [ ] Test all 4 commands locally
-- [ ] Verify XDS queries return accurate data
-- [ ] Confirm RACs voice (no XDS mention, professional tone)
-- [ ] Test lead capture end-to-end
-- [ ] Verify CTAs vary (not repetitive)
+- [ ] Test intent detection (greeting, discovery, lookup, followup, lead_capture)
+- [ ] Test HS code discovery flow end-to-end (2 clarifications → 3 codes → pick → XDS)
+- [ ] Test direct HS code lookup (pasted code works)
+- [ ] Test lead capture flow (name → email → phone → Airtable)
+- [ ] Verify RACs voice (no XDS mention, professional tone, single CTA per response)
+- [ ] Verify no hallucination (only XDS data, no invented costs/timelines)
 - [ ] Set up monitoring for `.tmp/errors.log`
-- [ ] Configure Airtable webhook or polling for lead alerts
+- [ ] Test with Railway deployment (auto-deploys on GitHub push)
 - [ ] Brief RACs sales team on lead format + follow-up SLA
 
 ### Cloud Deployment
@@ -369,9 +427,9 @@ LOG_LEVEL=DEBUG python bot/telegram_bot.py
 - Check `.env` credentials
 
 **For RACs team:**
-- Lead format in Airtable: [schema above]
+- Lead format in Airtable: name, email, phone, product_interest, chat_id, source, timestamp
 - Lead capture disabled if Airtable not configured
-- Contact integration available in `/contact` command
+- Triggered when user says "connect me", "call me", or similar intent
 
 ## License
 
@@ -379,31 +437,40 @@ Internal use only. All user data encrypted in transit.
 
 ---
 
-**Last Updated:** 2026-05-09 (Major refactor: XDS integration fixed, hallucination eliminated)
+**Last Updated:** 2026-05-09 (Intent-driven refactor: natural conversation, HS code discovery, automatic routing)
 **Maintainer:** RACs Compliance Team  
 **Status:** ✅ Production Ready
 
 ## Latest Changes (2026-05-09)
 
-### XDS Integration Fixed
-- ✅ Parser now extracts data from correct HTML table structure (TD0-TD3 columns)
-- ✅ Detail page fetching works (fixed URL construction bug)
-- ✅ Detail page parser extracts real certification requirements, products covered, classifications
-- ✅ Claude only uses XDS data (no hallucinated costs, timelines, ISO codes)
-- ✅ Search term extraction prevents hallucination (extracts only user input, no invention)
+### Intent-Driven Architecture
+- ✅ Removed command-driven interface — bot detects intent automatically
+- ✅ No `/ask`, `/help`, `/contact` commands needed — just natural conversation
+- ✅ Multi-intent router: greeting, discovery, direct_lookup, followup, lead_capture, contact_info
+- ✅ HS code discovery mode: 2 clarifying questions → 2-3 code proposals → user picks → XDS query (single turn)
+- ✅ Lead capture seamlessly integrated into conversation flow (name → email → phone)
+- ✅ Preserved all XDS integration fixes and strict no-hallucination rules
 
-### Key Fixes
-1. **Search term extraction:** Strips markdown, prevents Claude from inventing standards
-2. **Detail URL:** Fixed duplicate path bug (`/certification/saudi-arabia/certification/...` → `/certification/saudi-arabia/...`)
-3. **Detail page parser:** Extracts real sections (Regulation Background, Products Covered, Cert Requirements, Classification)
-4. **System prompt:** Explicit rules forbidding invention of ISO codes, test procedures, costs, timelines
-5. **Fallback handling:** Uses user input as search term if Claude API fails
+### Key Improvements
+1. **Better UX:** Feels like talking to a human consultant, not triggering commands
+2. **Discovery Mode:** Helps users find HS codes they don't know (critical feature requested by user)
+3. **Intent Detection:** Claude router detects: greeting/discovery/lookup/followup/lead_capture/contact
+4. **Per-Chat State:** Rich state structure tracks mode, discovery sub-states, lead capture fields
+5. **Simplified Bot:** Removed 150+ lines of scattered state management, single message handler
 
-### Data Flow (Now Working)
+### Data Flow (Intent-Driven)
 ```
-User Question → Extract search term (no invention) 
-  → XDS query → Get real results 
-  → Fetch detail page → Extract requirements 
-  → Claude synthesizes with ONLY XDS data 
-  → Professional response (no hallucination)
+User Message (natural language)
+  ↓
+Claude Intent Detector
+  ├─ greeting → welcome
+  ├─ discovery → ask 2 Qs → propose codes → pick → XDS query
+  ├─ direct_lookup → XDS query
+  ├─ followup → answer from context
+  ├─ lead_capture → collect name/email/phone → Airtable
+  └─ contact_info → show contact details
+  ↓
+RACs Orchestrator (synthesize + CTA)
+  ↓
+Professional response (no hallucination, single CTA)
 ```
