@@ -379,6 +379,31 @@ Internal use only. All user data encrypted in transit.
 
 ---
 
-**Last Updated:** 2026-05-09  
+**Last Updated:** 2026-05-09 (Major refactor: XDS integration fixed, hallucination eliminated)
 **Maintainer:** RACs Compliance Team  
 **Status:** ✅ Production Ready
+
+## Latest Changes (2026-05-09)
+
+### XDS Integration Fixed
+- ✅ Parser now extracts data from correct HTML table structure (TD0-TD3 columns)
+- ✅ Detail page fetching works (fixed URL construction bug)
+- ✅ Detail page parser extracts real certification requirements, products covered, classifications
+- ✅ Claude only uses XDS data (no hallucinated costs, timelines, ISO codes)
+- ✅ Search term extraction prevents hallucination (extracts only user input, no invention)
+
+### Key Fixes
+1. **Search term extraction:** Strips markdown, prevents Claude from inventing standards
+2. **Detail URL:** Fixed duplicate path bug (`/certification/saudi-arabia/certification/...` → `/certification/saudi-arabia/...`)
+3. **Detail page parser:** Extracts real sections (Regulation Background, Products Covered, Cert Requirements, Classification)
+4. **System prompt:** Explicit rules forbidding invention of ISO codes, test procedures, costs, timelines
+5. **Fallback handling:** Uses user input as search term if Claude API fails
+
+### Data Flow (Now Working)
+```
+User Question → Extract search term (no invention) 
+  → XDS query → Get real results 
+  → Fetch detail page → Extract requirements 
+  → Claude synthesizes with ONLY XDS data 
+  → Professional response (no hallucination)
+```
