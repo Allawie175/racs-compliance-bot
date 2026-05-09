@@ -72,7 +72,7 @@ AIRTABLE_BASE_ID=<your_base_id>
 AIRTABLE_TABLE_NAME=Leads
 
 # XDS (already configured)
-XDS_BASE_URL=https://xds.com.sa
+XDS_BASE_URL=https://xds-solutions.com/certification/saudi-arabia/hs-code-search-tool
 ```
 
 **Getting credentials:**
@@ -306,20 +306,23 @@ LOG_LEVEL=DEBUG python bot/telegram_bot.py
 
 ### Cloud Deployment
 
-**Option 1: AWS Lambda + API Gateway**
-- Wrap `telegram_bot.py` in Lambda handler
-- Configure webhook (faster than polling)
-- Store conversation state in DynamoDB
+**Railway (Current)**
+1. Connect GitHub repo to Railway: https://railway.app
+2. Railway auto-deploys on every GitHub push
+3. Set environment variables in Railway dashboard:
+   - Go to project settings → Variables
+   - Add: `TELEGRAM_BOT_TOKEN`, `ANTHROPIC_API_KEY`, `XDS_BASE_URL`, `RACS_CONTACT_PHONE`, `RACS_CONTACT_EMAIL`, etc.
+4. Bot runs via `Procfile`: `worker: python bot/telegram_bot.py`
 
-**Option 2: Heroku**
-```bash
-git push heroku main
-```
-
-**Option 3: Self-Hosted (VPS)**
+**Alternative: Self-Hosted (VPS)**
 - Run `python bot/telegram_bot.py` in tmux/screen
 - Monitor with systemd service
 - Rotate logs daily
+
+**Legacy: AWS Lambda + API Gateway**
+- Wrap `telegram_bot.py` in Lambda handler
+- Configure webhook (faster than polling)
+- Store conversation state in DynamoDB
 
 ## Monitoring & Analytics
 
