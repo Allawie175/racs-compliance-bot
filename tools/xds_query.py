@@ -134,8 +134,9 @@ class XDSQueryEngine:
 
                     # Make detail URL absolute if needed
                     if detail_url and not detail_url.startswith("http"):
-                        base = os.getenv("XDS_BASE_URL", "https://xds-solutions.com").rsplit("/", 1)[0]
-                        detail_url = base + detail_url
+                        # href already includes full path from root (/certification/saudi-arabia/...)
+                        # so just prepend the domain
+                        detail_url = "https://xds-solutions.com" + detail_url
 
                     if hs_code and product_name:
                         result_dict = {
