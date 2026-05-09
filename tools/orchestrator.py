@@ -138,14 +138,27 @@ class Orchestrator:
                 system="You are a compliance search specialist. Extract the main product/regulation search term from the user's question. Return ONLY the search term (1-5 words), nothing else. If unclear, return empty string.",
                 messages=[{"role": "user", "content": user_message}]
             )
+            print(f"[DEBUG] Claude response object: content_length={len(response.content)}, stop_reason={response.stop_reason}, output_tokens={response.usage.output_tokens}")
+
             if not response.content or len(response.content) == 0:
-                print(f"[ERROR] Empty response from Claude: {response}")
+                print(f"[ERROR] Empty response from Claude. Full response: {response}")
+                # Try to extract from stop_reason or other fields
+                if response.stop_reason == "end_turn" and response.usage.output_tokens > 0:
+                    print(f"[WARNING] Claude generated {response.usage.output_tokens} tokens but no content. This is a Claude API issue.")
                 return None
 
             term = response.content[0].text.strip()
             # Remove markdown code block markers and extra whitespace
             term = term.replace("```", "").strip()
             return term if len(term) > 0 else None
+        except IndexError:
+            # Fallback: if Claude API fails, check if user_message is already a valid search term
+            # (e.g., HS code like "850410000000")
+            clean = user_message.strip().replace("```", "").replace("\n", "")
+            if clean and len(clean) > 0:
+                print(f"[DEBUG] Claude API failed, using user input directly: {clean}")
+                return clean
+            return None
         except Exception as e:
             print(f"[ERROR] Extract search term failed: {type(e).__name__}: {e}")
             import traceback
