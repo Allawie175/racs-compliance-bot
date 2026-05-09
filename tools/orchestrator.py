@@ -33,7 +33,7 @@ with open(CTA_STRATEGY_PATH, "r") as f:
 class Orchestrator:
     """
     RACs compliance intelligence engine.
-    Coordinates XDS queries with Claude synthesis to produce RACs-branded responses.
+    Intent-driven chatbot that feels like talking to a human consultant.
     """
 
     def __init__(self):
@@ -61,135 +61,440 @@ class Orchestrator:
                 else:
                     raise
         self.model = "claude-sonnet-4-6"
-        # Per-chat conversation history for multi-turn context
-        self.conversation_history: dict[str, list] = {}
+        # Per-chat state: richer than just history
+        self.chat_state: dict[str, dict] = {}
 
-    def process_query(
-        self,
-        user_message: str,
-        chat_id: str,
-        turn_count: int = 1
-    ) -> str:
+    def _init_chat_state(self, chat_id: str):
+        """Initialize per-chat state."""
+        if chat_id not in self.chat_state:
+            self.chat_state[chat_id] = {
+                "history": [],            # last 6 turns [{role, content}]
+                "turn_count": 0,
+                "mode": "idle",           # idle | discovery | lead_capture
+                "discovery": {
+                    "product_description": "",
+                    "clarifications": [],         # [{"question": ..., "answer": ...}]
+                    "clarification_count": 0,
+                    "proposed_hs_codes": [],      # [{"hs_code": ..., "product_name": ..., "reason": ...}]
+                    "chosen_hs_code": None
+                },
+                "lead": {
+                    "awaiting": None,             # "name" | "email" | "phone" | None
+                    "name": None,
+                    "email": None,
+                    "phone": None,
+                    "product_interest": ""
+                }
+            }
+
+    def process_message(self, user_message: str, chat_id: str) -> str:
         """
-        Process user question through full RACs pipeline.
-
-        Args:
-            user_message: User's compliance question
-            chat_id: Telegram chat ID (for conversation memory)
-            turn_count: Message count in this conversation (for CTA selection)
-
-        Returns:
-            RACs-branded response with embedded CTA
+        Central dispatcher: routes based on active mode or detected intent.
+        The bot feels like one continuous conversation.
         """
+        self._init_chat_state(chat_id)
+        state = self.chat_state[chat_id]
+        state["turn_count"] += 1
 
-        # Initialize conversation history for this chat if needed
-        if chat_id not in self.conversation_history:
-            self.conversation_history[chat_id] = []
+        print(f"[DEBUG] [{chat_id}] Turn {state['turn_count']} | Mode: {state['mode']}")
 
-        # Step 1: Extract search term from user message
-        search_term = self._extract_search_term(user_message)
-        print(f"[DEBUG] [{chat_id}] Extracted search term: {search_term}")
+        # Rule 1: If in lead capture mode, collect fields (bypass intent detection)
+        if state["mode"] == "lead_capture":
+            response = self._handle_lead_step(user_message, chat_id)
+            self._update_history(chat_id, user_message, response)
+            return response
 
-        if not search_term:
-            print(f"[DEBUG] [{chat_id}] Could not extract search term from: {user_message}")
-            return self._fallback_response("I couldn't understand your question. "
-                                          "Could you tell me more about the product you're importing?")
+        # Rule 2: If in discovery mode, handle sub-states (bypass intent detection)
+        if state["mode"] == "discovery":
+            if state["discovery"]["clarification_count"] < 2:
+                # Sub-state: gathering clarifications
+                response = self._handle_discovery_clarification(user_message, chat_id)
+            elif state["discovery"]["proposed_hs_codes"] and not state["discovery"]["chosen_hs_code"]:
+                # Sub-state: user is picking an HS code
+                response = self._handle_discovery_choice(user_message, chat_id)
+            else:
+                # Shouldn't reach here; reset to idle
+                state["mode"] = "idle"
+                response = "Let me help you with something else."
+            self._update_history(chat_id, user_message, response)
+            return response
 
-        # Step 2: Query XDS (hidden from user)
+        # Rule 3: Detect intent and route
+        intent_data = self._detect_intent(user_message, chat_id)
+        print(f"[DEBUG] [{chat_id}] Detected intent: {intent_data['intent']} (confidence: {intent_data['confidence']})")
+
+        intent = intent_data["intent"]
+        confidence = intent_data["confidence"]
+
+        if confidence == "low":
+            response = "Could you tell me a bit more about what you're trying to import or what you need help with?"
+        elif intent == "greeting":
+            response = self._handle_greeting()
+        elif intent == "contact_info":
+            response = self._handle_contact_info()
+        elif intent == "lead_capture":
+            response = self._start_lead_capture(chat_id)
+        elif intent == "discovery":
+            response = self._handle_discovery_start(user_message, chat_id)
+        elif intent == "direct_lookup":
+            extracted_term = intent_data.get("extracted") or user_message.strip()
+            response = self._handle_direct_lookup(extracted_term, user_message, chat_id)
+        elif intent == "followup":
+            response = self._handle_followup(user_message, chat_id)
+        else:
+            response = "I'm not sure I understand. Could you clarify?"
+
+        self._update_history(chat_id, user_message, response)
+        return response
+
+    def _detect_intent(self, user_message: str, chat_id: str) -> dict:
+        """
+        Lightweight Claude call to classify intent.
+        Returns: {"intent": "...", "confidence": "high|medium|low", "extracted": "..."}
+        """
+        state = self.chat_state[chat_id]
+        history_context = json.dumps(state["history"][-2:], ensure_ascii=False) if state["history"] else "New conversation"
+
+        system_prompt = """You are a routing classifier for a compliance assistant. Classify the user's message into exactly one intent.
+
+INTENTS:
+- "discovery": User describes a product but does not provide an HS code. They need help finding the right code.
+- "direct_lookup": User provides an HS code (numeric) OR a specific product name ready for immediate compliance lookup.
+- "followup": User is continuing a previous compliance topic (asks about timeline, costs, documents, clarification).
+- "lead_capture": User wants to be contacted, speak to someone, or connect with a specialist. Phrases: "connect me", "call me", "speak to someone", "contact me", "reach out".
+- "contact_info": User wants RACs phone/email/address.
+- "greeting": User says hi, hello, or starts fresh.
+
+Context (previous turns):
+{history_context}
+
+Respond with ONLY a JSON object, no other text:
+{{"intent": "<one of above>", "confidence": "high|medium|low", "extracted": "<HS code, product name, or null>"}}"""
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=80,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_message}]
+            )
+            intent_text = response.content[0].text.strip()
+            intent_data = json.loads(intent_text)
+            return intent_data
+        except (json.JSONDecodeError, IndexError, Exception) as e:
+            print(f"[DEBUG] [{chat_id}] Intent detection failed: {e}")
+            # Fall back to low confidence
+            return {"intent": "unknown", "confidence": "low", "extracted": None}
+
+    def _handle_greeting(self) -> str:
+        """Warm welcome explaining bot capabilities."""
+        return """👋 Welcome to RACs Compliance Assistant!
+
+I'm here to help you understand what's needed to import products into Saudi Arabia.
+
+You can:
+✓ **Describe a product** and I'll help you find the right HS code
+✓ **Provide an HS code** and I'll look up the regulations
+✓ **Ask follow-up questions** about compliance requirements
+✓ **Connect with a specialist** if you need detailed guidance
+
+What are you importing, or how can I help?"""
+
+    def _handle_contact_info(self) -> str:
+        """Return RACs contact information."""
+        phone = os.getenv("RACS_CONTACT_PHONE", "+966-XX-XXXX-XXXX")
+        email = os.getenv("RACS_CONTACT_EMAIL", "compliance@racs.example")
+        calendly = os.getenv("RACS_CALENDLY_LINK", "https://calendly.com/racs")
+
+        return f"""📞 **RACs Contact Information**
+
+📱 Phone: {phone}
+✉️ Email: {email}
+📅 Schedule a consultation: {calendly}
+
+Ready to discuss your import requirements?"""
+
+    def _start_lead_capture(self, chat_id: str) -> str:
+        """Enter lead capture mode: ask for name."""
+        state = self.chat_state[chat_id]
+        state["mode"] = "lead_capture"
+        state["lead"]["awaiting"] = "name"
+        return "I'd love to connect you with a RACs specialist. What's your name?"
+
+    def _handle_lead_step(self, user_message: str, chat_id: str) -> str:
+        """Handle sequential lead capture steps."""
+        state = self.chat_state[chat_id]
+        lead = state["lead"]
+
+        if lead["awaiting"] == "name":
+            lead["name"] = user_message.strip()
+            lead["awaiting"] = "email"
+            return f"Thanks, {lead['name']}! What's your email address?"
+
+        elif lead["awaiting"] == "email":
+            lead["email"] = user_message.strip()
+            lead["awaiting"] = "phone"
+            return "And your phone number?"
+
+        elif lead["awaiting"] == "phone":
+            lead["phone"] = user_message.strip()
+            lead["awaiting"] = None
+
+            # Extract product interest from recent history
+            for msg in reversed(state["history"]):
+                if msg.get("role") == "assistant":
+                    # Look for product mentions
+                    if any(word in msg.get("content", "").lower() for word in ["hs code", "product", "import"]):
+                        lead["product_interest"] = msg["content"][:200]
+                        break
+
+            # Submit to Airtable
+            from bot.lead_capture import LeadCapture
+            try:
+                lead_capture_service = LeadCapture()
+                lead_capture_service.submit_lead({
+                    "name": lead["name"],
+                    "email": lead["email"],
+                    "phone": lead["phone"],
+                    "product_interest": lead["product_interest"],
+                    "chat_id": chat_id
+                })
+                state["mode"] = "idle"
+                return f"""✅ Thank you, {lead['name']}!
+
+A RACs specialist will reach out to you at {lead['email']} or {lead['phone']} within 24 hours.
+
+Looking forward to helping you navigate Saudi Arabia's import requirements."""
+            except Exception as e:
+                print(f"[ERROR] [{chat_id}] Lead capture failed: {e}")
+                state["mode"] = "idle"
+                return f"""✅ Thank you, {lead['name']}!
+
+We've noted your interest. A RACs specialist will reach out soon."""
+
+    def _handle_discovery_start(self, user_message: str, chat_id: str) -> str:
+        """User describes a product without an HS code. Start discovery mode."""
+        state = self.chat_state[chat_id]
+        state["mode"] = "discovery"
+        state["discovery"]["product_description"] = user_message
+        state["discovery"]["clarification_count"] = 0
+        state["discovery"]["clarifications"] = []
+
+        # Ask first clarifying question
+        return self._ask_discovery_clarification(user_message, chat_id)
+
+    def _ask_discovery_clarification(self, product_description: str, chat_id: str) -> str:
+        """Ask a clarifying question about the product."""
+        state = self.chat_state[chat_id]
+        disco = state["discovery"]
+
+        system_prompt = """You are a Saudi Arabia import specialist helping identify the correct HS code for a product.
+
+The user is trying to find the right HS code for importing a product. Ask ONE focused clarifying question that would help narrow down the correct code.
+
+Important unknowns to explore: material composition, power source, primary function, intended use, capacity/size, brand/type.
+
+Previous clarifications so far:
+{clarifications}
+
+Ask the most important remaining question. Be conversational and natural. One question only. No preamble.""".format(
+            clarifications=json.dumps(disco["clarifications"], ensure_ascii=False) if disco["clarifications"] else "None yet"
+        )
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=150,
+                system=system_prompt,
+                messages=[{"role": "user", "content": f"I want to import: {product_description}"}]
+            )
+            question = response.content[0].text.strip()
+            disco["clarification_count"] += 1
+            return question
+        except Exception as e:
+            print(f"[ERROR] [{chat_id}] Clarification generation failed: {e}")
+            return "Could you tell me more about this product — what material is it made from, or what's its main function?"
+
+    def _handle_discovery_clarification(self, user_message: str, chat_id: str) -> str:
+        """User answered a clarification. Store it and ask next, or move to proposals."""
+        state = self.chat_state[chat_id]
+        disco = state["discovery"]
+
+        # Store the answer
+        disco["clarifications"].append({"answer": user_message})
+
+        if disco["clarification_count"] < 2:
+            # Ask next clarification
+            return self._ask_discovery_clarification(disco["product_description"], chat_id)
+        else:
+            # Propose HS codes
+            return self._propose_hs_codes(chat_id)
+
+    def _propose_hs_codes(self, chat_id: str) -> str:
+        """Generate 2-3 HS code candidates based on product description + clarifications."""
+        state = self.chat_state[chat_id]
+        disco = state["discovery"]
+
+        clarifications_text = "\n".join(
+            [f"Q: {c['question']}\nA: {c['answer']}"
+             for c in disco["clarifications"] if "question" in c and "answer" in c]
+        ) if disco["clarifications"] else "None"
+
+        system_prompt = f"""You are a Saudi Arabia HS code expert. Based on a product description, propose 2-3 plausible HS code candidates.
+
+Product Description: {disco['product_description']}
+
+Clarifications gathered:
+{clarifications_text}
+
+For each candidate provide:
+- hs_code: the 6-digit HS code (e.g., "850431")
+- product_name: official product name for that code
+- reason: one sentence why this code could fit
+
+Propose only codes that are plausible. If you are certain of only one, propose it plus 1-2 adjacent codes commonly confused with it.
+
+Respond with ONLY valid JSON, no other text:
+{{"candidates": [{{"hs_code": "...", "product_name": "...", "reason": "..."}}]}}"""
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=300,
+                system=system_prompt,
+                messages=[{"role": "user", "content": "Generate HS code candidates."}]
+            )
+            candidates_text = response.content[0].text.strip()
+            candidates_data = json.loads(candidates_text)
+            disco["proposed_hs_codes"] = candidates_data.get("candidates", [])
+
+            # Format as user-friendly message
+            msg = "Based on what you've told me, here are the likely HS codes:\n\n"
+            for i, cand in enumerate(disco["proposed_hs_codes"], 1):
+                msg += f"**Option {i}: {cand['hs_code']}**\n"
+                msg += f"Product: {cand['product_name']}\n"
+                msg += f"Why: {cand['reason']}\n\n"
+
+            msg += "Which one sounds right to you? (Just reply with the option number or the HS code)"
+            return msg
+        except Exception as e:
+            print(f"[ERROR] [{chat_id}] HS code proposal failed: {e}")
+            return "I'm having trouble narrowing down the exact code. Let me connect you with a specialist to confirm. Sound good?"
+
+    def _handle_discovery_choice(self, user_message: str, chat_id: str) -> str:
+        """User picked an HS code. Query XDS immediately."""
+        state = self.chat_state[chat_id]
+        disco = state["discovery"]
+
+        # Try to match user's choice to a candidate
+        chosen_code = None
+        user_lower = user_message.lower().strip()
+
+        for i, cand in enumerate(disco["proposed_hs_codes"], 1):
+            code = cand.get("hs_code", "")
+            if code in user_message or f"option {i}" in user_lower:
+                chosen_code = code
+                break
+
+        if not chosen_code:
+            return "I'm not sure which code you meant. Could you confirm the code number or option number?"
+
+        disco["chosen_hs_code"] = chosen_code
+        state["mode"] = "idle"
+
+        # Immediately query XDS with the chosen code
+        return self._handle_direct_lookup(chosen_code, f"I want to import products with HS code {chosen_code}", chat_id)
+
+    def _handle_direct_lookup(self, search_term: str, user_message: str, chat_id: str) -> str:
+        """Direct HS code or product lookup."""
+        state = self.chat_state[chat_id]
+
+        # Clean search term
+        search_term = search_term.strip().replace("```", "").replace("\n", "")
+        print(f"[DEBUG] [{chat_id}] Direct lookup for: {search_term}")
+
+        # Query XDS
         xds_results = XDSQueryEngine.search(search_term)
-        print(f"[DEBUG] [{chat_id}] XDS returned {len(xds_results)} results for '{search_term}'")
+        print(f"[DEBUG] [{chat_id}] XDS returned {len(xds_results)} results")
         if xds_results:
             print(f"[DEBUG] [{chat_id}] First result: {xds_results[0]}")
 
-        # Step 3: Fetch detail if we got a result
+        # Fetch detail if available
         detail_data = None
         if xds_results and xds_results[0].get("detail_url"):
             detail_data = XDSQueryEngine.get_detail(xds_results[0]["detail_url"])
             print(f"[DEBUG] [{chat_id}] Detail page fetched: {bool(detail_data)}")
 
-        # Step 4: Synthesize into RACs voice
-        response = self._synthesize_response(
+        # Synthesize response
+        response = self._synthesize_compliance_response(
             user_message=user_message,
-            search_term=search_term,
             xds_results=xds_results,
             detail_data=detail_data,
-            turn_count=turn_count,
             chat_id=chat_id
         )
-
-        # Step 5: Update conversation history
-        self.conversation_history[chat_id].append({"role": "user", "content": user_message})
-        self.conversation_history[chat_id].append({"role": "assistant", "content": response})
-
-        # Keep only last 6 messages per conversation
-        if len(self.conversation_history[chat_id]) > 6:
-            self.conversation_history[chat_id] = self.conversation_history[chat_id][-6:]
-
         return response
 
-    def _extract_search_term(self, user_message: str) -> Optional[str]:
-        """
-        Use Claude to extract a clean XDS search term from user message.
-        """
+    def _handle_followup(self, user_message: str, chat_id: str) -> str:
+        """Continuation of a previous compliance topic."""
+        state = self.chat_state[chat_id]
+        history = state["history"]
+
+        system_prompt = f"""{BRAND_VOICE}
+
+---
+
+## Your Task
+
+You are the RACs compliance assistant. The user is asking a follow-up question about a product already discussed.
+
+Use the conversation history and be helpful, concise, and honest. If you need more information from XDS, acknowledge it naturally.
+
+CRITICAL RULES:
+1. NEVER invent data not in the conversation
+2. If you're unsure, be honest and suggest connecting with a specialist
+3. Include exactly ONE call-to-action at the end
+4. Keep responses conversational and brief
+
+---
+
+## Conversation History (for context)
+
+{json.dumps(history[-4:], ensure_ascii=False) if history else "New conversation"}
+
+---
+
+## Output
+
+Provide ONLY the RACs response, no preamble. Include one CTA.
+"""
+
         try:
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=50,
-                system="""Extract ONLY what the user wrote. Do NOT invent or add anything.
-- If user writes an HS code (digits), return exactly that HS code.
-- If user writes a product name, return exactly that product name.
-- If user writes a regulation name, return exactly that.
-- Do NOT add standards, codes, or context that weren't in the user's message.
-- Return ONLY the search term, nothing else.""",
+                max_tokens=800,
+                system=system_prompt,
                 messages=[{"role": "user", "content": user_message}]
             )
-            print(f"[DEBUG] Claude response object: content_length={len(response.content)}, stop_reason={response.stop_reason}, output_tokens={response.usage.output_tokens}")
-
-            if not response.content or len(response.content) == 0:
-                print(f"[ERROR] Empty response from Claude. Full response: {response}")
-                # Try to extract from stop_reason or other fields
-                if response.stop_reason == "end_turn" and response.usage.output_tokens > 0:
-                    print(f"[WARNING] Claude generated {response.usage.output_tokens} tokens but no content. This is a Claude API issue.")
-                return None
-
-            term = response.content[0].text.strip()
-            # Remove markdown code block markers and extra whitespace
-            term = term.replace("```", "").strip()
-            return term if len(term) > 0 else None
-        except IndexError:
-            # Fallback: if Claude API fails, check if user_message is already a valid search term
-            # (e.g., HS code like "850410000000")
-            clean = user_message.strip().replace("```", "").replace("\n", "")
-            if clean and len(clean) > 0:
-                print(f"[DEBUG] Claude API failed, using user input directly: {clean}")
-                return clean
-            return None
+            return response.content[0].text.strip()
         except Exception as e:
-            print(f"[ERROR] Extract search term failed: {type(e).__name__}: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
+            print(f"[ERROR] [{chat_id}] Followup response failed: {e}")
+            cta = random.choice(CTA_STRATEGY.get("default", {}).get("ctas", ["Let's connect you with a specialist."]))
+            return f"That's a great question. {cta}"
 
-    def _synthesize_response(
+    def _synthesize_compliance_response(
         self,
         user_message: str,
-        search_term: str,
         xds_results: list,
         detail_data: Optional[dict],
-        turn_count: int,
         chat_id: str
     ) -> str:
-        """
-        Use Claude to synthesize XDS data into RACs-branded response.
-        """
-        # Prepare XDS data summary
+        """Synthesize XDS data into RACs-branded compliance response."""
+        state = self.chat_state[chat_id]
+        history = state["history"]
+
         xds_summary = self._format_xds_data(xds_results, detail_data)
         print(f"[DEBUG] [{chat_id}] XDS summary:\n{xds_summary}")
 
-        # Get conversation history for context
-        history = self.conversation_history.get(chat_id, [])
-
-        # Prepare system prompt with brand voice
         system_prompt = f"""{BRAND_VOICE}
 
 ---
@@ -240,10 +545,6 @@ Conversation Context:
 
 ---
 
-Your response should acknowledge the regulatory requirement and recommend a specialist consultation to handle the specifics.
-
----
-
 ## Output
 
 Provide ONLY the RACs response, no preamble. Include exactly one CTA at the end.
@@ -261,12 +562,11 @@ Provide ONLY the RACs response, no preamble. Include exactly one CTA at the end.
             return synthesized
         except Exception as e:
             print(f"[DEBUG] [{chat_id}] Error synthesizing response: {e}")
-            return self._fallback_response(user_message)
+            cta = random.choice(CTA_STRATEGY.get("default", {}).get("ctas", ["Let's connect you with a specialist."]))
+            return f"I'm having trouble with that. {cta}"
 
     def _format_xds_data(self, xds_results: list, detail_data: Optional[dict]) -> str:
-        """
-        Format XDS results and detail page data into a comprehensive summary for Claude.
-        """
+        """Format XDS results and detail page data for Claude."""
         if not xds_results:
             return "No results found on XDS."
 
@@ -304,55 +604,25 @@ Primary Result:
 
         return summary
 
-    def _fallback_response(self, user_message: str) -> str:
-        """
-        Graceful fallback when XDS fails or data is unclear.
-        """
-        cta = random.choice(CTA_STRATEGY["default"]["ctas"])
-        return f"""I couldn't find specific data on that product right now, but RACs can definitely help.
+    def _update_history(self, chat_id: str, user_message: str, response: str):
+        """Update conversation history, keeping only last 6 turns."""
+        state = self.chat_state[chat_id]
+        state["history"].append({"role": "user", "content": user_message})
+        state["history"].append({"role": "assistant", "content": response})
 
-Import compliance can be complex, and every product is unique. Rather than guessing, let's talk with someone who knows your specific situation.
+        if len(state["history"]) > 6:
+            state["history"] = state["history"][-6:]
 
-{cta}"""
 
-    def get_cta_for_context(
-        self,
-        complexity: str = "default",
-        urgency: str = "none",
-        turn_count: int = 1
-    ) -> str:
-        """
-        Select appropriate CTA based on complexity/urgency/journey stage.
-        Never returns same CTA twice for same chat.
-        """
-        # Determine category
-        if urgency == "high":
-            category = "urgent_products"
-        elif complexity == "high":
-            category = "complex_products"
-        elif complexity == "low":
-            category = "simple_products"
-        elif turn_count >= 3:
-            category = "returning_user"
-        elif turn_count == 1:
-            category = "first_question"
-        else:
-            category = "default"
-
-        # Ensure category exists
-        if category not in CTA_STRATEGY:
-            category = "default"
-
-        ctas = CTA_STRATEGY[category]["ctas"]
-        return random.choice(ctas)
+# Keep old process_query for backward compatibility with tests
+Orchestrator.process_query = lambda self, user_message, chat_id, turn_count=1: self.process_message(user_message, chat_id)
 
 
 if __name__ == "__main__":
     # Quick test
     orchestrator = Orchestrator()
-    response = orchestrator.process_query(
-        user_message="What do I need to import electric scooters to Saudi Arabia?",
-        chat_id="test_chat",
-        turn_count=1
+    response = orchestrator.process_message(
+        user_message="Hi, I want to import some electronic devices but I'm not sure about the HS code",
+        chat_id="test_chat"
     )
     print(response)
