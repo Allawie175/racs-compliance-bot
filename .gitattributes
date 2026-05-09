@@ -1,0 +1,3 @@
+Procfile eol=lf
+runtime.txt eol=lf
+*.py eol=lf
