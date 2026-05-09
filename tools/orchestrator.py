@@ -106,16 +106,15 @@ class Orchestrator:
 
         # Rule 2: If in discovery mode, handle sub-states (bypass intent detection)
         if state["mode"] == "discovery":
-            if state["discovery"]["clarification_count"] < 2:
-                # Sub-state: gathering clarifications
-                response = self._handle_discovery_clarification(user_message, chat_id)
-            elif state["discovery"]["proposed_hs_codes"] and not state["discovery"]["chosen_hs_code"]:
+            # Check in this order:
+            # 1. If we have proposals and user hasn't picked yet, handle their choice
+            # 2. Otherwise, gather clarifications (auto-generates proposals when we have 2)
+            if state["discovery"]["proposed_hs_codes"] and not state["discovery"]["chosen_hs_code"]:
                 # Sub-state: user is picking an HS code
                 response = self._handle_discovery_choice(user_message, chat_id)
             else:
-                # Shouldn't reach here; reset to idle
-                state["mode"] = "idle"
-                response = "Let me help you with something else."
+                # Sub-state: gathering clarifications (or generating proposals)
+                response = self._handle_discovery_clarification(user_message, chat_id)
             self._update_history(chat_id, user_message, response)
             return response
 
@@ -288,18 +287,23 @@ We've noted your interest. A RACs specialist will reach out soon."""
         state = self.chat_state[chat_id]
         disco = state["discovery"]
 
-        system_prompt = """You are a Saudi Arabia import specialist helping identify the correct HS code for a product.
+        # Format previous Q&As for context
+        previous_qa = ""
+        if disco["clarifications"]:
+            previous_qa = "\nPrevious Q&A:\n" + "\n".join(
+                [f"Q: {c.get('question', 'N/A')}\nA: {c.get('answer', 'N/A')}"
+                 for c in disco["clarifications"]]
+            )
+
+        system_prompt = f"""You are a Saudi Arabia import specialist helping identify the correct HS code for a product.
 
 The user is trying to find the right HS code for importing a product. Ask ONE focused clarifying question that would help narrow down the correct code.
 
 Important unknowns to explore: material composition, power source, primary function, intended use, capacity/size, brand/type.
 
-Previous clarifications so far:
-{clarifications}
+Product: {product_description}{previous_qa}
 
-Ask the most important remaining question. Be conversational and natural. One question only. No preamble.""".format(
-            clarifications=json.dumps(disco["clarifications"], ensure_ascii=False) if disco["clarifications"] else "None yet"
-        )
+Ask the most important remaining question. Be conversational and natural. One question only. No preamble."""
 
         try:
             response = self.client.messages.create(
@@ -309,7 +313,6 @@ Ask the most important remaining question. Be conversational and natural. One qu
                 messages=[{"role": "user", "content": f"I want to import: {product_description}"}]
             )
             question = response.content[0].text.strip()
-            disco["clarification_count"] += 1
             return question
         except Exception as e:
             print(f"[ERROR] [{chat_id}] Clarification generation failed: {e}")
@@ -320,14 +323,23 @@ Ask the most important remaining question. Be conversational and natural. One qu
         state = self.chat_state[chat_id]
         disco = state["discovery"]
 
-        # Store the answer
-        disco["clarifications"].append({"answer": user_message})
+        # If this is not the first answer, append to the last stored question
+        if disco["clarifications"] and "answer" not in disco["clarifications"][-1]:
+            disco["clarifications"][-1]["answer"] = user_message
+        else:
+            # First answer - just store it for now, will add question context
+            if not disco["clarifications"]:
+                disco["clarifications"].append({"answer": user_message})
+            else:
+                # We have previous Q&A, this is a new answer after a new question
+                disco["clarifications"].append({"answer": user_message})
 
-        if disco["clarification_count"] < 2:
+        # Check if we have 2 answers yet
+        if len(disco["clarifications"]) < 2:
             # Ask next clarification
             return self._ask_discovery_clarification(disco["product_description"], chat_id)
         else:
-            # Propose HS codes
+            # We have 2 answers, propose HS codes
             return self._propose_hs_codes(chat_id)
 
     def _propose_hs_codes(self, chat_id: str) -> str:
@@ -335,16 +347,16 @@ Ask the most important remaining question. Be conversational and natural. One qu
         state = self.chat_state[chat_id]
         disco = state["discovery"]
 
-        clarifications_text = "\n".join(
-            [f"Q: {c['question']}\nA: {c['answer']}"
-             for c in disco["clarifications"] if "question" in c and "answer" in c]
-        ) if disco["clarifications"] else "None"
+        # Build clarifications context from answers
+        clarifications_text = "User answered:\n"
+        for i, c in enumerate(disco["clarifications"], 1):
+            answer = c.get('answer', 'N/A')
+            clarifications_text += f"{i}. {answer}\n"
 
-        system_prompt = f"""You are a Saudi Arabia HS code expert. Based on a product description, propose 2-3 plausible HS code candidates.
+        system_prompt = f"""You are a Saudi Arabia HS code expert. Based on a product description and clarifications, propose 2-3 plausible HS code candidates.
 
-Product Description: {disco['product_description']}
+Product: {disco['product_description']}
 
-Clarifications gathered:
 {clarifications_text}
 
 For each candidate provide:
