@@ -305,7 +305,16 @@ We've noted your interest. A RACs specialist will reach out soon."""
         disco["clarification_count"] = 0
         disco["clarifications"] = []
 
-        # NEW: Extract product keyword and search XDS immediately
+        # Check if user just said a reset keyword (restart, cancel, etc) without product name
+        msg_lower = user_message.lower().strip()
+        reset_keywords = ["restart", "reset", "cancel", "start over", "start fresh", "new request"]
+        is_just_reset = any(msg_lower == kw or msg_lower.startswith(kw + " ") for kw in reset_keywords)
+
+        # If user just said "restart" etc without providing a product, ask what to import
+        if is_just_reset and len(user_message.split()) <= 2:
+            return "Great! Let's start fresh. 🔄 What product would you like to import?"
+
+        # Extract product keyword and search XDS immediately
         keyword = self._extract_product_keyword(user_message)
 
         if keyword:
