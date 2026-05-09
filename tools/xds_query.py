@@ -161,28 +161,50 @@ class XDSQueryEngine:
     @staticmethod
     def _parse_detail_page(html: str) -> Optional[dict]:
         """
-        Parse XDS detail page HTML.
-        Extract: certification procedure, documents required, accredited bodies, standards.
+        Parse XDS detail page HTML to extract certification requirements.
+        Returns: certification requirements, products covered, documentation needed.
         """
         try:
             soup = BeautifulSoup(html, "html.parser")
 
-            # Example parsing (adjust selectors to actual XDS structure)
-            title_elem = soup.find("h1", class_="product-title")
-            procedure_elem = soup.find("div", class_="certification-procedure")
-            docs_elem = soup.find("div", class_="required-documents")
-            standards_elem = soup.find("div", class_="applicable-standards")
-            bodies_elem = soup.find("div", class_="accredited-bodies")
+            detail_dict = {}
 
-            detail_dict = {
-                "product_name": title_elem.get_text(strip=True) if title_elem else "",
-                "certification_procedure": procedure_elem.get_text(strip=True) if procedure_elem else "",
-                "required_documents": docs_elem.get_text(strip=True) if docs_elem else "",
-                "applicable_standards": standards_elem.get_text(strip=True) if standards_elem else "",
-                "accredited_bodies": bodies_elem.get_text(strip=True) if bodies_elem else ""
-            }
+            # Extract all paragraphs and sections
+            all_text = soup.get_text(separator="\n", strip=True)
 
-            return detail_dict if detail_dict.get("product_name") else None
+            # Look for "Certification Requirements" section
+            if "Certification Requirements" in all_text or "Test Report" in all_text or "Product Photos" in all_text:
+                # Extract documentation requirements by looking for common phrases
+                docs = []
+                if "Test Report" in all_text:
+                    docs.append("Test Report")
+                if "Product Photos" in all_text:
+                    docs.append("Product Photos")
+                if "Data Sheet" in all_text or "Data Sheets" in all_text:
+                    docs.append("Data Sheets")
+                if "Conformity" in all_text:
+                    docs.append("Conformity Assessment")
+
+                if docs:
+                    detail_dict["required_documents"] = ", ".join(docs)
+
+            # Look for product classification (Type 1a, Type B, etc.)
+            if "Type 1a" in all_text:
+                detail_dict["product_classification"] = "Type 1a Assessment"
+            elif "Type B" in all_text:
+                detail_dict["product_classification"] = "Type B Assessment"
+            elif "Type C" in all_text:
+                detail_dict["product_classification"] = "Type C Assessment"
+
+            # Look for regulation background
+            if "SASO" in all_text:
+                detail_dict["regulator"] = "SASO (Saudi Standards, Metrology and Quality Organization)"
+
+            # Extract products covered section if present
+            if "Products Covered" in all_text or "Products covered" in all_text:
+                detail_dict["has_product_list"] = True
+
+            return detail_dict if detail_dict else None
 
         except Exception as e:
             logger.error(f"Failed to parse detail page: {str(e)}")

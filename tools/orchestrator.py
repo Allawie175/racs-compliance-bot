@@ -139,6 +139,8 @@ class Orchestrator:
                 messages=[{"role": "user", "content": user_message}]
             )
             term = response.content[0].text.strip()
+            # Remove markdown code block markers and extra whitespace
+            term = term.replace("```", "").strip()
             return term if len(term) > 0 else None
         except Exception as e:
             print(f"Error extracting search term: {e}")
