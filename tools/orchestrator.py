@@ -366,8 +366,8 @@ For each candidate provide:
 
 Propose only codes that are plausible. If you are certain of only one, propose it plus 1-2 adjacent codes commonly confused with it.
 
-Respond with ONLY valid JSON, no other text:
-{{"candidates": [{{"hs_code": "...", "product_name": "...", "reason": "..."}}]}}"""
+CRITICAL: Respond with ONLY a valid JSON object. No markdown, no explanation, no code blocks. Just raw JSON:
+{{"candidates": [{{"hs_code": "850510", "product_name": "Lead-acid storage batteries", "reason": "Car batteries are classified as lead-acid automotive batteries"}}]}}"""
 
         try:
             response = self.client.messages.create(
@@ -377,8 +377,18 @@ Respond with ONLY valid JSON, no other text:
                 messages=[{"role": "user", "content": "Generate HS code candidates."}]
             )
             candidates_text = response.content[0].text.strip()
+            print(f"[DEBUG] [{chat_id}] Claude response for HS codes: {candidates_text[:200]}")
+
+            if not candidates_text:
+                print(f"[ERROR] [{chat_id}] Claude returned empty response")
+                return "I'm having trouble narrowing down the exact code. Let me connect you with a specialist to confirm. Sound good?"
+
             candidates_data = json.loads(candidates_text)
             disco["proposed_hs_codes"] = candidates_data.get("candidates", [])
+
+            if not disco["proposed_hs_codes"]:
+                print(f"[ERROR] [{chat_id}] No candidates in Claude response")
+                return "I'm having trouble narrowing down the exact code. Let me connect you with a specialist to confirm. Sound good?"
 
             # Format as user-friendly message
             msg = "Based on what you've told me, here are the likely HS codes:\n\n"
@@ -389,8 +399,14 @@ Respond with ONLY valid JSON, no other text:
 
             msg += "Which one sounds right to you? (Just reply with the option number or the HS code)"
             return msg
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] [{chat_id}] JSON parse failed: {e}")
+            print(f"[ERROR] [{chat_id}] Raw response was: {candidates_text[:500] if 'candidates_text' in locals() else 'N/A'}")
+            return "I'm having trouble narrowing down the exact code. Let me connect you with a specialist to confirm. Sound good?"
         except Exception as e:
             print(f"[ERROR] [{chat_id}] HS code proposal failed: {e}")
+            import traceback
+            traceback.print_exc()
             return "I'm having trouble narrowing down the exact code. Let me connect you with a specialist to confirm. Sound good?"
 
     def _handle_discovery_choice(self, user_message: str, chat_id: str) -> str:
