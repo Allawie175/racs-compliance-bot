@@ -666,6 +666,8 @@ Keywords:"""
             "different product",
             "cancel",
             "start over",
+            "start fresh",
+            "restart",
             "reset",
             "new query",
             "different import"
