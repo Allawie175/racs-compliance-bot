@@ -162,48 +162,86 @@ class XDSQueryEngine:
     @staticmethod
     def _parse_detail_page(html: str) -> Optional[dict]:
         """
-        Parse XDS detail page HTML to extract certification requirements.
-        Returns: certification requirements, products covered, documentation needed.
+        Parse XDS detail page to extract regulation background, products covered, and requirements.
+        Returns structured data for Claude to synthesize into response.
         """
         try:
             soup = BeautifulSoup(html, "html.parser")
+            all_text = soup.get_text(separator="\n", strip=True)
 
             detail_dict = {}
 
-            # Extract all paragraphs and sections
-            all_text = soup.get_text(separator="\n", strip=True)
+            # Extract regulation background (description before Products Covered)
+            if "The Technical Regulation for" in all_text or "Technical Regulation for" in all_text:
+                # Find text between "Technical Regulation for" and "Products Covered"
+                start = all_text.find("Technical Regulation for")
+                if start != -1:
+                    end = all_text.find("Products Covered", start)
+                    if end == -1:
+                        end = all_text.find("Certification Requirements", start)
 
-            # Look for "Certification Requirements" section
-            if "Certification Requirements" in all_text or "Test Report" in all_text or "Product Photos" in all_text:
-                # Extract documentation requirements by looking for common phrases
-                docs = []
-                if "Test Report" in all_text:
-                    docs.append("Test Report")
-                if "Product Photos" in all_text:
-                    docs.append("Product Photos")
-                if "Data Sheet" in all_text or "Data Sheets" in all_text:
-                    docs.append("Data Sheets")
-                if "Conformity" in all_text:
-                    docs.append("Conformity Assessment")
+                    if end != -1:
+                        regulation_text = all_text[start:end].strip()
+                        # Clean up and truncate to reasonable length
+                        regulation_text = regulation_text.replace("\n", " ")[:300]
+                        detail_dict["regulation_description"] = regulation_text
 
-                if docs:
-                    detail_dict["required_documents"] = ", ".join(docs)
+            # Extract products covered section
+            if "Products Covered" in all_text:
+                start = all_text.find("Products Covered")
+                # Find end (either at Certification Requirements or next section)
+                end = all_text.find("Certification Requirements", start)
+                if end == -1:
+                    end = all_text.find("Product Classification", start)
+                if end == -1:
+                    end = start + 500  # Just take next 500 chars
 
-            # Look for product classification (Type 1a, Type B, etc.)
-            if "Type 1a" in all_text:
-                detail_dict["product_classification"] = "Type 1a Assessment"
-            elif "Type B" in all_text:
-                detail_dict["product_classification"] = "Type B Assessment"
-            elif "Type C" in all_text:
-                detail_dict["product_classification"] = "Type C Assessment"
+                products_section = all_text[start:end].strip()
+                detail_dict["products_covered"] = products_section[:400]
 
-            # Look for regulation background
-            if "SASO" in all_text:
-                detail_dict["regulator"] = "SASO (Saudi Standards, Metrology and Quality Organization)"
+            # Extract certification requirements with descriptions
+            if "Test Report:" in all_text:
+                start = all_text.find("Test Report:")
+                end = all_text.find("Product Photos:", start)
+                if end == -1:
+                    end = start + 200
+                test_req = all_text[start:end].replace("\n", " ").strip()[:150]
+                detail_dict["test_report_requirement"] = test_req
 
-            # Extract products covered section if present
-            if "Products Covered" in all_text or "Products covered" in all_text:
-                detail_dict["has_product_list"] = True
+            if "Product Photos:" in all_text:
+                start = all_text.find("Product Photos:")
+                end = all_text.find("Data Sheet", start)
+                if end == -1:
+                    end = start + 200
+                photos_req = all_text[start:end].replace("\n", " ").strip()[:150]
+                detail_dict["photos_requirement"] = photos_req
+
+            if "Data Sheet" in all_text:
+                start = all_text.find("Data Sheet")
+                end = all_text.find("Product Classification", start)
+                if end == -1:
+                    end = start + 200
+                data_req = all_text[start:end].replace("\n", " ").strip()[:150]
+                detail_dict["data_sheets_requirement"] = data_req
+
+            # Extract product classification details
+            if "Type 1a Assessment" in all_text:
+                start = all_text.find("Type 1a Assessment")
+                end = all_text.find("Note:", start)
+                if end == -1:
+                    end = start + 200
+                classification = all_text[start:end].replace("\n", " ").strip()[:200]
+                detail_dict["product_classification"] = classification
+
+            # Extract additional certificates note
+            if "G-Mark Certificate" in all_text or "IECEE" in all_text:
+                start = all_text.find("Note:")
+                if start != -1:
+                    end = all_text.find("Please note", start)
+                    if end == -1:
+                        end = start + 300
+                    note = all_text[start:end].replace("\n", " ").strip()[:250]
+                    detail_dict["additional_certificates_note"] = note
 
             return detail_dict if detail_dict else None
 

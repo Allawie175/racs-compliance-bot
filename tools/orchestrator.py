@@ -265,7 +265,7 @@ Provide ONLY the RACs response, no preamble. Include exactly one CTA at the end.
 
     def _format_xds_data(self, xds_results: list, detail_data: Optional[dict]) -> str:
         """
-        Format XDS results into a concise summary for Claude.
+        Format XDS results and detail page data into a comprehensive summary for Claude.
         """
         if not xds_results:
             return "No results found on XDS."
@@ -276,17 +276,32 @@ Primary Result:
 - Product: {top_result.get('product_name', 'N/A')}
 - HS Code: {top_result.get('hs_code', 'N/A')}
 - Regulation: {top_result.get('regulation', 'N/A')}
-- Certification Type: {top_result.get('certification_type', 'N/A')}
-- Description: {top_result.get('description', 'N/A')}
+- Certification Type: {top_result.get('certification_type', 'Not specified')}
 """
         if detail_data:
-            summary += f"""
-Detail Page Data:
-- Procedure: {detail_data.get('certification_procedure', 'N/A')}
-- Required Documents: {detail_data.get('required_documents', 'N/A')}
-- Applicable Standards: {detail_data.get('applicable_standards', 'N/A')}
-- Accredited Bodies: {detail_data.get('accredited_bodies', 'N/A')}
-"""
+            summary += "\nDetail Page Information:\n"
+
+            if detail_data.get('regulation_description'):
+                summary += f"- Regulation Background: {detail_data.get('regulation_description')}\n"
+
+            if detail_data.get('products_covered'):
+                summary += f"- Products Covered: {detail_data.get('products_covered')}\n"
+
+            if detail_data.get('test_report_requirement') or detail_data.get('photos_requirement') or detail_data.get('data_sheets_requirement'):
+                summary += "- Certification Requirements:\n"
+                if detail_data.get('test_report_requirement'):
+                    summary += f"  • {detail_data.get('test_report_requirement')}\n"
+                if detail_data.get('photos_requirement'):
+                    summary += f"  • {detail_data.get('photos_requirement')}\n"
+                if detail_data.get('data_sheets_requirement'):
+                    summary += f"  • {detail_data.get('data_sheets_requirement')}\n"
+
+            if detail_data.get('product_classification'):
+                summary += f"- Product Classification: {detail_data.get('product_classification')}\n"
+
+            if detail_data.get('additional_certificates_note'):
+                summary += f"- Additional Notes: {detail_data.get('additional_certificates_note')}\n"
+
         return summary
 
     def _fallback_response(self, user_message: str) -> str:
