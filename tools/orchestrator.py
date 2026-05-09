@@ -283,11 +283,22 @@ We've noted your interest. A RACs specialist will reach out soon."""
         """User describes a product without an HS code. Start discovery mode."""
         state = self.chat_state[chat_id]
         state["mode"] = "discovery"
-        state["discovery"]["product_description"] = user_message
-        state["discovery"]["clarification_count"] = 0
-        state["discovery"]["clarifications"] = []
+        disco = state["discovery"]
+        disco["product_description"] = user_message
+        disco["clarification_count"] = 0
+        disco["clarifications"] = []
 
-        # Ask first clarifying question
+        # NEW: Extract product keyword and search XDS immediately
+        keyword = self._extract_product_keyword(user_message)
+
+        if keyword:
+            xds_results = XDSQueryEngine.search(keyword)
+            if xds_results:
+                grouped = self._group_results_by_hs_prefix(xds_results)
+                disco["proposed_hs_codes"] = grouped
+                return self._format_xds_options(grouped)
+
+        # Fallback: Ask clarifying questions if XDS search returns nothing
         return self._ask_discovery_clarification(user_message, chat_id)
 
     def _ask_discovery_clarification(self, product_description: str, chat_id: str) -> str:
@@ -565,6 +576,50 @@ Return ONLY the HS code of the best matching variant (e.g., "871160900000"). No 
             disco["chosen_sub_code"] = first_code
             state["mode"] = "idle"
             return self._handle_direct_lookup(first_code, f"HS code {first_code}", chat_id)
+
+    def _extract_product_keyword(self, user_message: str) -> str:
+        """Extract product keyword from user message using Claude."""
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=15,
+                timeout=10.0,
+                messages=[{
+                    "role": "user",
+                    "content": f"""Extract the main product keyword(s) from this message for searching a customs database. Return ONLY 1-2 words, no punctuation.
+
+Message: "{user_message}"
+Keywords:"""
+                }]
+            )
+            return response.content[0].text.strip()
+        except Exception as e:
+            print(f"[ERROR] Keyword extraction failed: {e}")
+            return ""
+
+    def _group_results_by_hs_prefix(self, xds_results: list) -> list:
+        """Group XDS results by 6-digit HS code prefix."""
+        groups = {}
+        for r in xds_results:
+            prefix = r["hs_code"][:6] if len(r["hs_code"]) >= 6 else r["hs_code"]
+            if prefix not in groups:
+                count = sum(1 for x in xds_results if x["hs_code"].startswith(prefix))
+                groups[prefix] = {
+                    "hs_code": prefix,
+                    "product_name": r["product_name"],
+                    "reason": f"{count} XDS match(es)",
+                    "matches": []
+                }
+            groups[prefix]["matches"].append(r)
+        return list(groups.values())[:6]
+
+    def _format_xds_options(self, grouped: list) -> str:
+        """Format grouped XDS results as numbered options."""
+        lines = ["I found these HS codes in our database:\n"]
+        for i, g in enumerate(grouped, 1):
+            lines.append(f"Option {i}: {g['hs_code']} — {g['product_name']} ({g['reason']})")
+        lines.append("\nWhich one best describes your product?")
+        return "\n".join(lines)
 
     def _handle_direct_lookup(self, search_term: str, user_message: str, chat_id: str) -> str:
         """Direct HS code or product lookup."""
