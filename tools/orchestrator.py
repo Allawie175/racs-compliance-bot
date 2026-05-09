@@ -138,12 +138,18 @@ class Orchestrator:
                 system="You are a compliance search specialist. Extract the main product/regulation search term from the user's question. Return ONLY the search term (1-5 words), nothing else. If unclear, return empty string.",
                 messages=[{"role": "user", "content": user_message}]
             )
+            if not response.content or len(response.content) == 0:
+                print(f"[ERROR] Empty response from Claude: {response}")
+                return None
+
             term = response.content[0].text.strip()
             # Remove markdown code block markers and extra whitespace
             term = term.replace("```", "").strip()
             return term if len(term) > 0 else None
         except Exception as e:
-            print(f"Error extracting search term: {e}")
+            print(f"[ERROR] Extract search term failed: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def _synthesize_response(
