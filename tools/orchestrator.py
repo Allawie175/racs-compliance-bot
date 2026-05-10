@@ -70,7 +70,7 @@ class Orchestrator:
             self.chat_state[chat_id] = {
                 "history": [],            # last 6 turns [{role, content}]
                 "turn_count": 0,
-                "mode": "idle",           # idle | discovery | lead_capture
+                "mode": "idle",           # idle | discovery | lead_capture | direct_lookup_ambiguous
                 "discovery": {
                     "product_description": "",
                     "clarifications": [],         # [{"question": ..., "answer": ...}]
@@ -82,6 +82,12 @@ class Orchestrator:
                     "chosen_sub_code": None,      # final 10-digit code selected
                     "failed_choice_count": 0,     # track consecutive failed option matches
                     "awaiting_restart_confirm": False  # waiting for user to confirm new search
+                },
+                "direct_lookup": {
+                    "search_term": "",            # original search term
+                    "user_message": "",           # original user message
+                    "proposed_codes": [],         # ambiguous matches [{"hs_code": ..., "product_name": ...}]
+                    "chosen_code": None           # user's selected code
                 },
                 "lead": {
                     "awaiting": None,             # "name" | "email" | "phone" | None
@@ -106,6 +112,12 @@ class Orchestrator:
         # Rule 1: If in lead capture mode, collect fields (bypass intent detection)
         if state["mode"] == "lead_capture":
             response = self._handle_lead_step(user_message, chat_id)
+            self._update_history(chat_id, user_message, response)
+            return response
+
+        # Rule 1b: If in direct lookup ambiguous mode, handle code selection
+        if state["mode"] == "direct_lookup_ambiguous":
+            response = self._handle_ambiguous_lookup_choice(user_message, chat_id)
             self._update_history(chat_id, user_message, response)
             return response
 
@@ -729,6 +741,68 @@ Keyword:"""
         lines.append("\nWhich one best describes your product?")
         return "\n".join(lines)
 
+    def _format_ambiguous_options(self, codes: list) -> str:
+        """Format ambiguous direct lookup results as numbered options."""
+        lines = ["I found multiple matches in our database:\n"]
+        for i, c in enumerate(codes, 1):
+            lines.append(f"Option {i}: **{c['hs_code']}** — {c['product_name']}")
+            if c.get('regulation'):
+                lines.append(f"  Regulation: {c['regulation']}")
+        lines.append("\nWhich one matches what you're importing? (Reply with the option number or HS code)")
+        return "\n".join(lines)
+
+    def _handle_ambiguous_lookup_choice(self, user_message: str, chat_id: str) -> str:
+        """User picked a code from ambiguous direct lookup options."""
+        state = self.chat_state[chat_id]
+        lookup = state["direct_lookup"]
+
+        # Try to match user's choice to one of the proposed codes
+        chosen_code = None
+        user_lower = user_message.lower().strip()
+
+        # First, try to match by option number
+        for i, code_option in enumerate(lookup["proposed_codes"], 1):
+            code = code_option.get("hs_code", "")
+            if f"option {i}" in user_lower or f"{i}" in user_lower.split():
+                chosen_code = code
+                print(f"[DEBUG] [{chat_id}] Matched option {i} -> {code}")
+                break
+
+        # If no match by option number, try by code
+        if not chosen_code:
+            for code_option in lookup["proposed_codes"]:
+                code = code_option.get("hs_code", "")
+                if code and code in user_message:
+                    chosen_code = code
+                    print(f"[DEBUG] [{chat_id}] Matched code {code}")
+                    break
+
+        if not chosen_code:
+            print(f"[DEBUG] [{chat_id}] No match found for: '{user_message}'")
+            return "I'm not sure which option you meant. Please reply with the option number (1, 2, 3, etc.) or the HS code."
+
+        lookup["chosen_code"] = chosen_code
+        state["mode"] = "idle"
+
+        # Search XDS with the chosen code
+        print(f"[DEBUG] [{chat_id}] Searching XDS for chosen code: {chosen_code}")
+        xds_results = XDSQueryEngine.search(chosen_code)
+
+        # Fetch detail
+        detail_data = None
+        if xds_results and xds_results[0].get("detail_url"):
+            detail_data = XDSQueryEngine.get_detail(xds_results[0]["detail_url"])
+            print(f"[DEBUG] [{chat_id}] Detail page fetched: {bool(detail_data)}")
+
+        # Synthesize response
+        response = self._synthesize_compliance_response(
+            user_message=lookup["user_message"],
+            xds_results=xds_results,
+            detail_data=detail_data,
+            chat_id=chat_id
+        )
+        return response
+
     def _is_new_discovery_request(self, user_message: str) -> bool:
         """Check if user is starting a new discovery request while in discovery mode."""
         msg_lower = user_message.lower().strip()
@@ -778,7 +852,7 @@ Keyword:"""
         return term
 
     def _handle_direct_lookup(self, search_term: str, user_message: str, chat_id: str) -> str:
-        """Direct HS code or product lookup."""
+        """Direct HS code or product lookup. If ambiguous (multiple codes), present options."""
         state = self.chat_state[chat_id]
 
         # Clean and normalize search term
@@ -798,16 +872,45 @@ Keyword:"""
             state["mode"] = "discovery"
             return self._handle_discovery_start(user_message, chat_id)
 
+        # Check if results are ambiguous (multiple distinct HS codes)
+        distinct_codes = {}
+        for result in xds_results:
+            code = result.get("hs_code", "")[:6]  # Use 6-digit prefix
+            if code not in distinct_codes:
+                distinct_codes[code] = result
+
+        print(f"[DEBUG] [{chat_id}] Found {len(distinct_codes)} distinct HS codes")
+
+        # If multiple distinct codes, present options instead of picking one
+        if len(distinct_codes) > 1:
+            print(f"[DEBUG] [{chat_id}] Ambiguous lookup detected, presenting options")
+            state["mode"] = "direct_lookup_ambiguous"
+            state["direct_lookup"]["search_term"] = search_term
+            state["direct_lookup"]["user_message"] = user_message
+            state["direct_lookup"]["proposed_codes"] = [
+                {
+                    "hs_code": code,
+                    "product_name": result.get("product_name", ""),
+                    "regulation": result.get("regulation", "")
+                }
+                for code, result in list(distinct_codes.items())[:5]  # Max 5 options
+            ]
+            return self._format_ambiguous_options(state["direct_lookup"]["proposed_codes"])
+
+        # Single code: proceed directly to synthesis
+        chosen_code = list(distinct_codes.keys())[0]
+        filtered_results = [r for r in xds_results if r.get("hs_code", "")[:6] == chosen_code]
+
         # Fetch detail if available
         detail_data = None
-        if xds_results and xds_results[0].get("detail_url"):
-            detail_data = XDSQueryEngine.get_detail(xds_results[0]["detail_url"])
+        if filtered_results and filtered_results[0].get("detail_url"):
+            detail_data = XDSQueryEngine.get_detail(filtered_results[0]["detail_url"])
             print(f"[DEBUG] [{chat_id}] Detail page fetched: {bool(detail_data)}")
 
         # Synthesize response
         response = self._synthesize_compliance_response(
             user_message=user_message,
-            xds_results=xds_results,
+            xds_results=filtered_results,
             detail_data=detail_data,
             chat_id=chat_id
         )
