@@ -162,142 +162,80 @@ class XDSQueryEngine:
     @staticmethod
     def _parse_detail_page(html: str) -> Optional[dict]:
         """
-        Parse XDS detail page to extract whatever regulation data is available.
-        Always returns data found on page - never returns None if page loaded.
-        Claude receives whatever XDS provides, regardless of structure.
+        Parse XDS detail page using HTML structure (not text search).
+        Extract regulation name, summary, SABER links, and all content sections.
         """
         try:
             soup = BeautifulSoup(html, "html.parser")
-            all_text = soup.get_text(separator="\n", strip=True)
-
             detail_dict = {}
 
-            # Extract HS Code header/description (FULL, no truncation)
-            if "HS Code Header" in all_text:
-                start = all_text.find("HS Code Header")
-                if start != -1:
-                    end = all_text.find("This Saudi HS Code is covered", start)
-                    if end == -1:
-                        end = all_text.find("Certificate of Conformity", start)
-                    if end == -1:
-                        end = all_text.find("Technical Regulation", start)
-                    if end == -1:
-                        end = start + 500
+            # 1. Extract regulation name from h2 tag
+            h2 = soup.find("h2")
+            if h2:
+                regulation_name = h2.get_text(strip=True)
+                detail_dict["regulation_name"] = regulation_name
 
-                    if end > start:
-                        header_text = all_text[start:end].strip()
-                        detail_dict["hs_code_header"] = header_text
+            # 2. Extract regulation summary from first meaningful paragraph
+            paragraphs = soup.find_all("p")
+            for p in paragraphs:
+                text = p.get_text(strip=True)
+                # Look for paragraph that mentions SASO or starts the regulation description
+                if len(text) > 100 and any(keyword in text.lower() for keyword in ["saso", "technical regulation", "food safety"]):
+                    detail_dict["regulation_summary"] = text
+                    break
 
-            # Extract regulation background - FULL, NO TRUNCATION
-            if "Technical Regulation" in all_text:
-                start = all_text.find("Technical Regulation")
-                if start != -1:
-                    end = all_text.find("Certificate of Conformity", start)
-                    if end == -1:
-                        end = all_text.find("Products Covered", start)
-                    if end == -1:
-                        end = all_text.find("Certification Requirements", start)
-                    if end == -1:
-                        end = all_text.find("How Do I Apply", start)
-                    if end == -1:
-                        end = start + 2000
+            # 3. Extract SABER links
+            saber_links = {}
+            for link in soup.find_all("a"):
+                href = link.get("href", "")
+                link_text = link.get_text(strip=True)
 
-                    if end > start:
-                        regulation_text = all_text[start:end].strip()
-                        detail_dict["regulation_description"] = regulation_text
+                # Look for specific SABER-related links
+                if "saso.gov.sa" in href and "pdf" in href.lower():
+                    saber_links["regulation_pdf"] = href
+                elif "saber.sa" in href and "HSCodes" in href:
+                    saber_links["hs_code_page"] = href
+                elif "saber.sa" in href and link_text.lower() in ["saber portal", "official saber website"]:
+                    saber_links["saber_portal"] = href
 
-            # Extract Certificate of Conformity section (if exists)
-            if "Certificate of Conformity" in all_text:
-                start = all_text.find("Certificate of Conformity")
-                if start != -1:
-                    end = all_text.find("Products Covered", start)
-                    if end == -1:
-                        end = all_text.find("Certification Requirements", start)
-                    if end == -1:
-                        end = all_text.find("How Do I Apply", start)
-                    if end == -1:
-                        end = start + 1000
+            if saber_links:
+                detail_dict["saber_links"] = saber_links
 
-                    if end > start:
-                        cert_cof_text = all_text[start:end].strip()
-                        detail_dict["certificate_of_conformity"] = cert_cof_text
+            # 4. Extract content sections by h3 headings
+            h3_tags = soup.find_all("h3")
+            for h3 in h3_tags:
+                section_name = h3.get_text(strip=True)
 
-            # Extract products covered section (FULL, no truncation)
-            if "Products Covered" in all_text:
-                start = all_text.find("Products Covered")
-                if start != -1:
-                    end = all_text.find("Certification Requirements", start)
-                    if end == -1:
-                        end = all_text.find("Product Classification", start)
-                    if end == -1:
-                        end = all_text.find("How Do I Apply", start)
-                    if end == -1:
-                        end = len(all_text)
+                # Get all text until next h3 or major section
+                content_parts = []
+                current = h3.find_next()
+                while current:
+                    # Stop if we hit another h3, h2, or major section
+                    if current.name in ["h2", "h3"]:
+                        break
 
-                    if end > start:
-                        products_section = all_text[start:end].strip()
-                        detail_dict["products_covered"] = products_section
+                    # Collect text from paragraphs, lists, divs
+                    if current.name in ["p", "li", "div", "span"]:
+                        text = current.get_text(strip=True)
+                        if text and len(text) > 10:
+                            content_parts.append(text)
 
-            # Extract certification requirements section (FULL, no truncation)
-            if "Certification Requirements" in all_text:
-                start = all_text.find("Certification Requirements")
-                if start != -1:
-                    end = all_text.find("Product Classification", start)
-                    if end == -1:
-                        end = all_text.find("Note:", start)
-                    if end == -1:
-                        end = all_text.find("How Do I Apply", start)
-                    if end == -1:
-                        end = len(all_text)
+                    current = current.find_next()
 
-                    if end > start:
-                        cert_section = all_text[start:end].strip()
-                        detail_dict["certification_requirements"] = cert_section
+                if content_parts:
+                    # Create a key from the section name (e.g., "Products Covered" -> "products_covered")
+                    key = section_name.lower().replace(" ", "_").replace("'", "")
+                    detail_dict[key] = " ".join(content_parts)
 
-            # Extract product classification section (FULL, no truncation)
-            if "Product Classification" in all_text:
-                start = all_text.find("Product Classification")
-                if start != -1:
-                    end = all_text.find("Note:", start)
-                    if end == -1:
-                        end = all_text.find("How Do I Apply", start)
-                    if end == -1:
-                        end = len(all_text)
+            # 5. Fallback: if very little extracted, include raw text
+            if len(detail_dict) < 5:
+                all_text = soup.get_text(separator="\n", strip=True)
+                if all_text and len(all_text) > 100:
+                    detail_dict["raw_page_content"] = all_text
 
-                    if end > start:
-                        classification_section = all_text[start:end].strip()
-                        detail_dict["product_classification"] = classification_section
-
-            # Extract additional notes (FULL, no truncation)
-            if "Note:" in all_text:
-                start = all_text.find("Note:")
-                if start != -1:
-                    end = all_text.find("Please note that", start)
-                    if end == -1:
-                        end = len(all_text)
-
-                    if end > start:
-                        note_section = all_text[start:end].strip()
-                        detail_dict["additional_notes"] = note_section
-
-            # Extract disclaimer (FULL, no truncation)
-            if "Please note that HS codes" in all_text:
-                start = all_text.find("Please note that HS codes")
-                if start != -1:
-                    disclaimer = all_text[start:].strip()
-                    detail_dict["disclaimer"] = disclaimer
-
-            # If we found any sections, return them
             if detail_dict:
                 return detail_dict
 
-            # If no specific sections found, return the whole page text as raw content
-            # This ensures Claude always gets XDS data, even if structure is unexpected
-            if all_text and len(all_text) > 100:
-                detail_dict["raw_page_content"] = all_text
-                return detail_dict
-
-            # Only return None if page was completely empty
             return None
 
         except Exception as e:
