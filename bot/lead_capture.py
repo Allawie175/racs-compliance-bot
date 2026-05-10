@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class LeadCapture:
     """
     Airtable lead capture integration.
-    Pushes qualified leads to RACs CRM for follow-up.
+    Pushes qualified leads to RACS CRM for follow-up.
     """
 
     AIRTABLE_BASE_URL = "https://api.airtable.com/v0"

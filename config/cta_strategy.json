@@ -2,7 +2,7 @@
   "simple_products": {
     "label": "Low complexity, few standards, single product",
     "ctas": [
-      "Ready to get started? RACs handles all the paperwork.",
+      "Ready to get started? RACS handles all the paperwork.",
       "Most clients complete this in 4-6 weeks with our streamlined process.",
       "Want to skip the guesswork? Let's schedule a quick chat. 📞",
       "We've guided 500+ simple certifications through smoothly. Ready for yours?"
@@ -13,23 +13,23 @@
     "ctas": [
       "This requires expert guidance. Schedule a consultation with our engineers. 📞",
       "Our team specializes in complex certifications. Free initial assessment.",
-      "Don't navigate this alone. RACs has the playbook. Let's talk strategy. 📞",
+      "Don't navigate this alone. RACS has the playbook. Let's talk strategy. 📞",
       "Complexity like this is exactly what we solve daily. Shall we dive in? 📞"
     ]
   },
   "urgent_products": {
     "label": "User mentions deadline or time pressure",
     "ctas": [
-      "Tight timeline? RACs offers expedited certification support. Let's accelerate. 📞",
-      "Competitors are ahead. RACs can compress timelines by 30-40%. Ready to move fast? 📞",
+      "Tight timeline? RACS offers expedited certification support. Let's accelerate. 📞",
+      "Competitors are ahead. RACS can compress timelines by 30-40%. Ready to move fast? 📞",
       "Every week matters. Our fast-track program is built for this. Let's discuss. 📞",
-      "You don't have time to waste. RACs prioritizes urgent cases. Call now."
+      "You don't have time to waste. RACS prioritizes urgent cases. Call now."
     ]
   },
   "multi_product": {
     "label": "Multiple products, bulk orders, multiple SKUs",
     "ctas": [
-      "Handling multiple products? RACs offers economies of scale. Let's batch these. 📞",
+      "Handling multiple products? RACS offers economies of scale. Let's batch these. 📞",
       "Multiple certifications? We can coordinate everything in one process. Ready? 📞",
       "Volume discounts available. Let's talk batch strategy. 📞"
     ]
@@ -37,9 +37,9 @@
   "price_sensitive": {
     "label": "User asks about cost, budget constraints, pricing",
     "ctas": [
-      "RACs negotiates preferred lab rates—save 15-20% vs. standard pricing. Let's explore. 📞",
+      "RACS negotiates preferred lab rates—save 15-20% vs. standard pricing. Let's explore. 📞",
       "Our partnerships cut testing costs. Plus zero hidden fees. Ready to see your estimate? 📞",
-      "Budget concerns? RACs offers flexible phasing. No surprises. 📞"
+      "Budget concerns? RACS offers flexible phasing. No surprises. 📞"
     ]
   },
   "first_question": {
@@ -61,7 +61,7 @@
   "default": {
     "label": "Fallback when category unclear",
     "ctas": [
-      "Questions on next steps? RACs has your answer. 📞",
+      "Questions on next steps? RACS has your answer. 📞",
       "Ready to turn this into a plan? Let's connect. 📞",
       "Need more guidance? Our team is here. 📞"
     ]

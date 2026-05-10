@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-RACs Bot Setup Validation Script
+RACS Bot Setup Validation Script
 
 Checks all dependencies, environment variables, and critical components.
 Run this after installation to verify everything is configured correctly.
@@ -169,7 +169,7 @@ def check_bot():
 def main():
     """Run all validation checks."""
     print("=" * 60)
-    print("RACs Compliance Bot - Setup Validation")
+    print("RACS Compliance Bot - Setup Validation")
     print("=" * 60)
 
     checks = [
@@ -206,7 +206,7 @@ def main():
     print(f"\nPassed: {passed}/{total}")
 
     if passed == total:
-        print("\n✨ All checks passed! Your RACs bot is ready to run.")
+        print("\n✨ All checks passed! Your RACS bot is ready to run.")
         print("\nNext step: python bot/telegram_bot.py")
         return 0
     else:

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class XDSQueryEngine:
     """
     Hidden XDS query interface. User never sees XDS branding.
-    Returns clean data suitable for RACs voice synthesis.
+    Returns clean data suitable for RACS voice synthesis.
     """
 
     BASE_URL = os.getenv("XDS_BASE_URL", "https://xds.com.sa")
@@ -48,7 +48,7 @@ class XDSQueryEngine:
                 cls.BASE_URL,
                 params=params,
                 timeout=cls.TIMEOUT,
-                headers={"User-Agent": "RACs-Compliance-Bot/1.0"},
+                headers={"User-Agent": "RACS-Compliance-Bot/1.0"},
                 verify=False
             )
             response.raise_for_status()
@@ -75,7 +75,7 @@ class XDSQueryEngine:
             response = requests.get(
                 url,
                 timeout=cls.TIMEOUT,
-                headers={"User-Agent": "RACs-Compliance-Bot/1.0"},
+                headers={"User-Agent": "RACS-Compliance-Bot/1.0"},
                 verify=False
             )
             response.raise_for_status()

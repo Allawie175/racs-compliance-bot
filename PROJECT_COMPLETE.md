@@ -1,4 +1,4 @@
-# ✅ RACs Compliance Chatbot — Project Complete
+# ✅ RACS Compliance Chatbot — Project Complete
 
 **Completion Date:** May 9, 2026  
 **Status:** Production-Ready  
@@ -11,8 +11,8 @@
 
 A **complete, white-label Telegram chatbot** that:
 
-✅ **Queries XDS invisibly** — User thinks it's RACs's expertise  
-✅ **Synthesizes compliance guidance** — Professional, accurate, RACs-branded  
+✅ **Queries XDS invisibly** — User thinks it's RACS's expertise  
+✅ **Synthesizes compliance guidance** — Professional, accurate, RACS-branded  
 ✅ **Drives lead generation** — Strategic CTAs → lead capture → Airtable  
 ✅ **Remembers conversations** — Multi-turn context awareness  
 ✅ **Escalates appropriately** — Simple products get simple answers; complex ones get "talk to expert"  
@@ -88,7 +88,7 @@ Test in Telegram: `/ask What do I need to import electric scooters?`
 | Component | Purpose | Input | Output |
 |---|---|---|---|
 | **XDS Query** | Search Saudi regulations | Product name | HS code, standards, cert type |
-| **Orchestrator** | Claude-powered synthesis | Query + XDS data | RACs response + CTA |
+| **Orchestrator** | Claude-powered synthesis | Query + XDS data | RACS response + CTA |
 | **Telegram Bot** | User interface | `/ask` command | Formatted message |
 | **Lead Capture** | CRM integration | User name/email/phone | Airtable record |
 | **Brand Voice** | Consistency rules | Tone guidelines | Response template |
@@ -103,14 +103,14 @@ Test in Telegram: `/ask What do I need to import electric scooters?`
 2. Bot: Extracts "electric scooter" → queries XDS
 3. XDS: Returns HS code, certification type, standards
 4. Claude: "This is Type A certification requiring ISO 13848-1..."
-5. Bot: Formats as RACs voice + adds CTA
-6. User sees: Professional compliance answer (looks like RACs expertise)
+5. Bot: Formats as RACS voice + adds CTA
+6. User sees: Professional compliance answer (looks like RACS expertise)
 7. After 3+ questions: Bot offers specialist connection
 8. User says "yes": Collects name/email/phone → Airtable
-9. RACs sales: Reaches out within 24h → close deal
+9. RACS sales: Reaches out within 24h → close deal
 ```
 
-**User never knows XDS was involved.** ✓ Looks like RACs's own system.
+**User never knows XDS was involved.** ✓ Looks like RACS's own system.
 
 ---
 
@@ -127,7 +127,7 @@ Bot: [Refers back to batteries, gives timeline—no repeat]
 ### Context-Aware CTAs
 - Simple products: "Ready to get started?"
 - Complex products: "Schedule a consultation"
-- Urgent products: "RACs can compress timelines 30-40%"
+- Urgent products: "RACS can compress timelines 30-40%"
 - (Never same CTA twice per conversation)
 
 ### Silent Error Handling
@@ -218,7 +218,7 @@ These are intentionally simple for MVP. Phase 2 roadmap in `DEPLOYMENT.md`.
 - **Tools** (`tools/`): Deterministic execution (XDS, Claude, formatting)
 - **Bot** (`bot/`): User interface & lead capture
 - **Config** (`config/`): Strategy & settings (change without code)
-- **Brand** (`brand/`): Voice & tone (edit as RACs brand evolves)
+- **Brand** (`brand/`): Voice & tone (edit as RACS brand evolves)
 
 ### Error Handling
 - All exceptions caught and logged
@@ -242,7 +242,7 @@ These are intentionally simple for MVP. Phase 2 roadmap in `DEPLOYMENT.md`.
 
 - [ ] Run `python validate_setup.py` (all green)
 - [ ] Run `python tools/xds_query.py` (returns real results)
-- [ ] Run `python tools/orchestrator.py` (RACs voice, no XDS mention)
+- [ ] Run `python tools/orchestrator.py` (RACS voice, no XDS mention)
 - [ ] Bot responds to all 4 commands (`/start`, `/ask`, `/contact`, `/help`)
 - [ ] Multi-turn conversation works (bot remembers context)
 - [ ] Lead capture works end-to-end
@@ -256,9 +256,9 @@ These are intentionally simple for MVP. Phase 2 roadmap in `DEPLOYMENT.md`.
 
 ✅ You'll know it's working when:
 
-1. **Brand Test**: User never mentions XDS; thinks it's RACs's tool
+1. **Brand Test**: User never mentions XDS; thinks it's RACS's tool
 2. **Answer Quality**: Response is specific, professional, helpful
-3. **CTA Test**: User clicks CTA → leads to RACs scheduling/contact
+3. **CTA Test**: User clicks CTA → leads to RACS scheduling/contact
 4. **Conversation Test**: Follow-up shows bot remembers context
 5. **Lead Test**: Users who engage 3+ turns → leads submitted → sales follows up
 6. **Conversion Test**: Leads from bot → phone calls → closed deals
@@ -342,7 +342,7 @@ These are intentionally simple for MVP. Phase 2 roadmap in `DEPLOYMENT.md`.
 
 ## License & Attribution
 
-**Internal Use Only** — RACs proprietary system
+**Internal Use Only** — RACS proprietary system
 
 - Built using Claude API (Anthropic)
 - Telegram integration via python-telegram-bot

@@ -32,7 +32,7 @@ with open(CTA_STRATEGY_PATH, "r") as f:
 
 class Orchestrator:
     """
-    RACs compliance intelligence engine.
+    RACS compliance intelligence engine.
     Intent-driven chatbot that feels like talking to a human consultant.
     """
 
@@ -196,7 +196,7 @@ INTENTS:
 - "direct_lookup": User provides an HS code (numeric) OR a specific product name ready for immediate compliance lookup.
 - "followup": User is continuing a previous compliance topic (asks about timeline, costs, documents, clarification).
 - "lead_capture": User wants to be contacted, speak to someone, or connect with a specialist. Phrases: "connect me", "call me", "speak to someone", "contact me", "reach out".
-- "contact_info": User wants RACs phone/email/address.
+- "contact_info": User wants RACS phone/email/address.
 - "greeting": User says hi, hello, or starts fresh.
 
 Context (previous turns):
@@ -222,7 +222,7 @@ Respond with ONLY a JSON object, no other text:
 
     def _handle_greeting(self) -> str:
         """Warm welcome explaining bot capabilities."""
-        return """👋 Welcome to RACs Compliance Assistant!
+        return """👋 Welcome to RACS Compliance Assistant!
 
 I'm here to help you understand what's needed to import products into Saudi Arabia.
 
@@ -235,12 +235,12 @@ You can:
 What are you importing, or how can I help?"""
 
     def _handle_contact_info(self) -> str:
-        """Return RACs contact information."""
+        """Return RACS contact information."""
         phone = os.getenv("RACS_CONTACT_PHONE", "+966-XX-XXXX-XXXX")
         email = os.getenv("RACS_CONTACT_EMAIL", "compliance@racs.example")
         calendly = os.getenv("RACS_CALENDLY_LINK", "https://calendly.com/racs")
 
-        return f"""📞 **RACs Contact Information**
+        return f"""📞 **RACS Contact Information**
 
 📱 Phone: {phone}
 ✉️ Email: {email}
@@ -253,7 +253,7 @@ Ready to discuss your import requirements?"""
         state = self.chat_state[chat_id]
         state["mode"] = "lead_capture"
         state["lead"]["awaiting"] = "name"
-        return "I'd love to connect you with a RACs specialist. What's your name?"
+        return "I'd love to connect you with a RACS specialist. What's your name?"
 
     def _handle_lead_step(self, user_message: str, chat_id: str) -> str:
         """Handle sequential lead capture steps."""
@@ -296,7 +296,7 @@ Ready to discuss your import requirements?"""
                 state["mode"] = "idle"
                 return f"""✅ Thank you, {lead['name']}!
 
-A RACs specialist will reach out to you at {lead['email']} or {lead['phone']} within 24 hours.
+A RACS specialist will reach out to you at {lead['email']} or {lead['phone']} within 24 hours.
 
 Looking forward to helping you navigate Saudi Arabia's import requirements."""
             except Exception as e:
@@ -304,7 +304,7 @@ Looking forward to helping you navigate Saudi Arabia's import requirements."""
                 state["mode"] = "idle"
                 return f"""✅ Thank you, {lead['name']}!
 
-We've noted your interest. A RACs specialist will reach out soon."""
+We've noted your interest. A RACS specialist will reach out soon."""
 
     def _handle_discovery_start(self, user_message: str, chat_id: str) -> str:
         """User describes a product without an HS code. Start discovery mode."""
@@ -824,7 +824,7 @@ Keyword:"""
 
 ## Your Task
 
-You are the RACs compliance assistant. The user is asking a follow-up question about a product already discussed.
+You are the RACS compliance assistant. The user is asking a follow-up question about a product already discussed.
 
 Use the conversation history and be helpful, concise, and honest. If you need more information from XDS, acknowledge it naturally.
 
@@ -844,7 +844,7 @@ CRITICAL RULES:
 
 ## Output
 
-Provide ONLY the RACs response, no preamble. Include one CTA.
+Provide ONLY the RACS response, no preamble. Include one CTA.
 """
 
         try:
@@ -867,7 +867,7 @@ Provide ONLY the RACs response, no preamble. Include one CTA.
         detail_data: Optional[dict],
         chat_id: str
     ) -> str:
-        """Synthesize XDS data into RACs-branded compliance response."""
+        """Synthesize XDS data into RACS-branded compliance response."""
         state = self.chat_state[chat_id]
         history = state["history"]
 
@@ -880,7 +880,7 @@ Provide ONLY the RACs response, no preamble. Include one CTA.
 
 ## Your Task
 
-You are the RACs compliance assistant. Use the regulatory data below to create a response that:
+You are the RACS compliance assistant. Use the regulatory data below to create a response that:
 1. Includes ALL information provided from the detail page sections
 2. Improves formatting, tone, and clarity for the user
 3. Groups information logically (Products Covered → Certification Requirements → Classification)
@@ -888,7 +888,7 @@ You are the RACs compliance assistant. Use the regulatory data below to create a
 5. Never invents data not in XDS
 
 CRITICAL RULES:
-1. NEVER mention the data source (user believes this is RACs's own expertise)
+1. NEVER mention the data source (user believes this is RACS's own expertise)
 2. NEVER remove sections like "Products Covered", "Certification Requirements", "Product Classification" - rephrase but include
 3. Include all products, requirements, and classifications mentioned
 4. NEVER invent: ISO standards, test procedures, specific timelines, costs beyond what XDS states
@@ -914,7 +914,7 @@ Conversation Context:
 
 ## Output
 
-Provide ONLY the RACs response. Include all sections from the detail page.
+Provide ONLY the RACS response. Include all sections from the detail page.
 Include exactly one CTA at the end.
 Structure: HS Code & Product → Regulation → Products Covered → Certification Requirements → Classification → Notes → CTA
 """

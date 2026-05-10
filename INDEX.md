@@ -1,4 +1,4 @@
-# RACs Compliance Chatbot — Documentation Index
+# RACS Compliance Chatbot — Documentation Index
 
 **Quick Navigation for All Project Docs**
 
@@ -30,7 +30,7 @@
 
 ### Tools (Backend Logic)
 - **[tools/xds_query.py](tools/xds_query.py)** — XDS HTTP client + HTML parser
-- **[tools/orchestrator.py](tools/orchestrator.py)** — Claude synthesis engine (RACs voice, CTA selection)
+- **[tools/orchestrator.py](tools/orchestrator.py)** — Claude synthesis engine (RACS voice, CTA selection)
 
 ### Bot (User Interface)
 - **[bot/telegram_bot.py](bot/telegram_bot.py)** — Telegram commands & handlers (/ask, /contact, /help, /start)
@@ -88,22 +88,22 @@ Before deploying to production, follow the checklist in [DEPLOYMENT.md](DEPLOYME
 User (Telegram)
   ↓ /ask "What do I need to import electric scooters?"
   ↓
-RACs Bot
+RACS Bot
   ├─ Extract: "electric scooter"
   ├─ Query XDS (hidden from user)
   ├─ Parse: HS code, standards, cert type
-  ├─ Claude: Synthesize into RACs voice
+  ├─ Claude: Synthesize into RACS voice
   ├─ Select: Contextual CTA
   └─ Format: Telegram MarkdownV2
   ↓
-Response (RACs branded, no XDS mention)
+Response (RACS branded, no XDS mention)
   "🛴 Electric scooters fall under Saudi Technical Regulation...
    ✓ Certification Type: Type A
    ✓ Standards: ISO 13848-1, EN 60950
    ⏱️ Timeline: 4-8 weeks
    💰 Cost: $3K-$8K
    ...
-   Ready to get started? RACs handles all the paperwork.
+   Ready to get started? RACS handles all the paperwork.
    📞 +966-XX-XXXX-XXXX"
   ↓
 [Optional: After turn 3+] Lead capture → Airtable
@@ -164,7 +164,7 @@ c:\Users\alial\Racs telegram\
 ## 🔑 Key Concepts
 
 ### The "Invisible XDS" Model
-- User thinks they're talking to RACs's own system ✓
+- User thinks they're talking to RACS's own system ✓
 - Behind scenes: Claude queries XDS for regulation data ✓
 - User never sees "XDS" mentioned anywhere ✓
 
@@ -189,7 +189,7 @@ c:\Users\alial\Racs telegram\
 - Parsed data should have "clean" keys (product_name, not xds_product)
 - If XDS is down, user sees helpful fallback (not "XDS error")
 
-### RACs Voice
+### RACS Voice
 - Professional but conversational (not corporate)
 - Specific numbers (not "varies")
 - Acknowledge pain points (timeline, cost, complexity)

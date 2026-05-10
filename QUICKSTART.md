@@ -1,4 +1,4 @@
-# Quick Start — RACs Compliance Bot
+# Quick Start — RACS Compliance Bot
 
 Get your bot running in 10 minutes.
 
@@ -18,7 +18,7 @@ Edit `.env` and fill in:
 TELEGRAM_BOT_TOKEN=YOUR_TOKEN_HERE          # Get from @BotFather
 ANTHROPIC_API_KEY=YOUR_KEY_HERE             # Get from console.anthropic.com
 
-# REQUIRED (RACs contact info)
+# REQUIRED (RACS contact info)
 RACS_CONTACT_PHONE=+966-50-XXXX-XXXX        # Your phone
 RACS_CONTACT_EMAIL=compliance@racs.example  # Your email
 RACS_CALENDLY_LINK=https://calendly.com/racs  # Your scheduling link
@@ -47,7 +47,7 @@ Expected output:
 ✓ TELEGRAM_BOT_TOKEN: configured
 ✓ ANTHROPIC_API_KEY: configured
 ... (all checks pass)
-✨ All checks passed! Your RACs bot is ready to run.
+✨ All checks passed! Your RACS bot is ready to run.
 ```
 
 ## Step 4: Test Locally (1 min)
@@ -58,7 +58,7 @@ python bot/telegram_bot.py
 
 Expected output:
 ```
-🤖 RACs Compliance Bot is running...
+🤖 RACS Compliance Bot is running...
 Press Ctrl+C to stop.
 ```
 
@@ -70,7 +70,7 @@ Open Telegram, find your bot, and test:
 /start
 ```
 
-Expected: Welcome message with RACs branding
+Expected: Welcome message with RACS branding
 
 ```
 /ask What do I need to import electric scooters to Saudi Arabia?

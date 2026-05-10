@@ -1,12 +1,12 @@
-# RACs Compliance Telegram Chatbot
+# RACS Compliance Telegram Chatbot
 
-A white-label compliance assistant that converts curious users into qualified leads through intelligent, RACs-branded responses powered by live XDS data.
+A white-label compliance assistant that converts curious users into qualified leads through intelligent, RACS-branded responses powered by live XDS data.
 
 ## Overview
 
 ### What It Does
 - **User sees**: Natural conversation with a compliance expert, no commands needed
-- **We do**: Detect intent, query XDS invisibly, synthesize into RACs voice
+- **We do**: Detect intent, query XDS invisibly, synthesize into RACS voice
 - **Result**: Seamless compliance guidance + lead conversion
 
 ### Architecture (Intent-Driven)
@@ -20,11 +20,11 @@ User Message (Telegram) — Natural conversation, no commands
          ├── direct_lookup → query XDS immediately
          ├── followup → answer from context
          ├── lead_capture → name → email → phone → Airtable
-         └── contact_info → show RACs contact details
+         └── contact_info → show RACS contact details
          ↓
-    RACs Orchestrator
+    RACS Orchestrator
          ├── Query XDS (if needed)
-         ├── Synthesize into RACs voice
+         ├── Synthesize into RACS voice
          └── Select contextual CTA
          ↓
    Telegram User (Sees professional response + single CTA)
@@ -34,7 +34,7 @@ User Message (Telegram) — Natural conversation, no commands
 | Component | Purpose | File |
 |---|---|---|
 | **XDS Query Engine** | HTTP client for XDS search | `tools/xds_query.py` |
-| **Orchestrator** | Claude-powered synthesis to RACs voice | `tools/orchestrator.py` |
+| **Orchestrator** | Claude-powered synthesis to RACS voice | `tools/orchestrator.py` |
 | **Telegram Bot** | Command handlers, user interface | `bot/telegram_bot.py` |
 | **Lead Capture** | Airtable integration for CRM push | `bot/lead_capture.py` |
 | **Brand Voice** | Tone guidelines, response templates, CTA pool | `brand/racs_voice.md` |
@@ -60,7 +60,7 @@ Copy `.env` and fill in credentials:
 TELEGRAM_BOT_TOKEN=<your_bot_token_from_BotFather>
 ANTHROPIC_API_KEY=<your_claude_api_key>
 
-# RACs Contact (appears in /contact command)
+# RACS Contact (appears in /contact command)
 RACS_CONTACT_PHONE=+966-XX-XXXX-XXXX
 RACS_CONTACT_EMAIL=compliance@racs.example
 RACS_CALENDLY_LINK=https://calendly.com/racs
@@ -104,7 +104,7 @@ Expected output:
 🛴 Electric scooters fall under Saudi Technical Regulation...
 ✓ Certification Type: Type A
 ...
-Ready to get started? RACs handles all the paperwork.
+Ready to get started? RACS handles all the paperwork.
 ```
 
 ### 5. Run Bot
@@ -115,7 +115,7 @@ python bot/telegram_bot.py
 
 Expected output:
 ```
-🤖 RACs Compliance Bot is running...
+🤖 RACS Compliance Bot is running...
 Press Ctrl+C to stop.
 ```
 
@@ -194,7 +194,7 @@ User:
 Can you connect me with a specialist? This is getting complex.
 
 Bot:
-I'd love to connect you with a RACs specialist. What's your name?
+I'd love to connect you with a RACS specialist. What's your name?
 
 User:
 Ahmed Al-Rashid
@@ -214,7 +214,7 @@ User:
 Bot:
 ✅ Thank you, Ahmed!
 
-A RACs specialist will reach out to you at ahmed@importco.example or +966-50-1234567 
+A RACS specialist will reach out to you at ahmed@importco.example or +966-50-1234567 
 within 24 hours.
 
 Looking forward to helping you navigate Saudi Arabia's import requirements.
@@ -231,7 +231,7 @@ The bot automatically detects what you want to do, no commands needed:
 | **Direct Lookup** | "8517120000" or "lithium batteries" | Query XDS immediately, return regulations |
 | **Follow-up** | "What about timeline?", "Will this cost more?" | Answer from conversation context, reference prior XDS data |
 | **Lead Capture** | "connect me", "call me", "I want to speak to someone" | Collect name → email → phone → submit to Airtable |
-| **Contact Info** | "How do I reach RACs?" | Show phone, email, Calendly link |
+| **Contact Info** | "How do I reach RACS?" | Show phone, email, Calendly link |
 
 ## Brand Voice
 
@@ -239,13 +239,13 @@ The bot speaks like a **trusted compliance expert**, not a generic AI.
 
 ### ✓ Do This
 - **Use only XDS data** — be accurate, not inventive
-- Acknowledge regulatory complexity and RACs value
+- Acknowledge regulatory complexity and RACS value
 - Be honest about unknowns: "The specifics depend on your exact product"
 - Include exactly ONE CTA per response
 - Feel like a human consultant, not an AI
 
 ### ✗ Don't Do This
-- Mention XDS as a data source (user believes this is RACs expertise)
+- Mention XDS as a data source (user believes this is RACS expertise)
 - Invent timelines, costs, or testing procedures
 - Use unexplained jargon
 - Repeat CTAs or mention multiple contact methods in one message
@@ -259,9 +259,9 @@ Every response includes exactly **one call-to-action**, selected based on:
 
 | Signal | Category | CTA Example |
 |---|---|---|
-| Few standards | `simple_products` | "Ready to get started? RACs handles all the paperwork." |
+| Few standards | `simple_products` | "Ready to get started? RACS handles all the paperwork." |
 | Multiple standards | `complex_products` | "This requires expert guidance. Schedule a consultation." |
-| User mentions deadline | `urgent_products` | "Tight timeline? RACs can compress by 30-40%." |
+| User mentions deadline | `urgent_products` | "Tight timeline? RACS can compress by 30-40%." |
 | Turn 1 | `first_question` | "You're asking the right questions. More?" |
 | Turn 3+ | `returning_user` | "Time to move forward with an expert?" |
 
@@ -272,11 +272,11 @@ Every response includes exactly **one call-to-action**, selected based on:
 After 3+ exchanges, bot offers to connect user with specialist.
 
 ### Flow
-1. Bot: "Want RACs to handle this? I can connect you."
+1. Bot: "Want RACS to handle this? I can connect you."
 2. User: "Yes"
 3. Bot: Collects name, email, phone
 4. Bot: Pushes to Airtable
-5. RACs Sales: Reaches out within 24h
+5. RACS Sales: Reaches out within 24h
 
 ### Airtable Record Structure
 ```
@@ -356,11 +356,11 @@ LOG_LEVEL=DEBUG python bot/telegram_bot.py
 - [ ] Test HS code discovery flow end-to-end (2 clarifications → 3 codes → pick → XDS)
 - [ ] Test direct HS code lookup (pasted code works)
 - [ ] Test lead capture flow (name → email → phone → Airtable)
-- [ ] Verify RACs voice (no XDS mention, professional tone, single CTA per response)
+- [ ] Verify RACS voice (no XDS mention, professional tone, single CTA per response)
 - [ ] Verify no hallucination (only XDS data, no invented costs/timelines)
 - [ ] Set up monitoring for `.tmp/errors.log`
 - [ ] Test with Railway deployment (auto-deploys on GitHub push)
-- [ ] Brief RACs sales team on lead format + follow-up SLA
+- [ ] Brief RACS sales team on lead format + follow-up SLA
 
 ### Cloud Deployment
 
@@ -416,7 +416,7 @@ LOG_LEVEL=DEBUG python bot/telegram_bot.py
 ### Phase 3
 - [ ] Multi-language support (AR, FR)
 - [ ] WhatsApp bot version
-- [ ] Integration with RACs CRM (HubSpot, Pipedrive)
+- [ ] Integration with RACS CRM (HubSpot, Pipedrive)
 - [ ] Chatbot analytics dashboard
 
 ## Support
@@ -426,7 +426,7 @@ LOG_LEVEL=DEBUG python bot/telegram_bot.py
 - Run tests: `python tools/xds_query.py`
 - Check `.env` credentials
 
-**For RACs team:**
+**For RACS team:**
 - Lead format in Airtable: name, email, phone, product_interest, chat_id, source, timestamp
 - Lead capture disabled if Airtable not configured
 - Triggered when user says "connect me", "call me", or similar intent
@@ -438,7 +438,7 @@ Internal use only. All user data encrypted in transit.
 ---
 
 **Last Updated:** 2026-05-09 (Intent-driven refactor: natural conversation, HS code discovery, automatic routing)
-**Maintainer:** RACs Compliance Team  
+**Maintainer:** RACS Compliance Team  
 **Status:** ✅ Production Ready
 
 ## Latest Changes (2026-05-09)
@@ -470,7 +470,7 @@ Claude Intent Detector
   ├─ lead_capture → collect name/email/phone → Airtable
   └─ contact_info → show contact details
   ↓
-RACs Orchestrator (synthesize + CTA)
+RACS Orchestrator (synthesize + CTA)
   ↓
 Professional response (no hallucination, single CTA)
 ```

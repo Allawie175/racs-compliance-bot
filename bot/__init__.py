@@ -1,4 +1,4 @@
-"""RACs Compliance Bot - Telegram Integration"""
+"""RACS Compliance Bot - Telegram Integration"""
 
 from .telegram_bot import RACSBot
 from .lead_capture import LeadCapture

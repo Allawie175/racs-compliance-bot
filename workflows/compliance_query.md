@@ -1,7 +1,7 @@
 # Workflow: Compliance Query Processing
 
 ## Objective
-Transform a user's compliance question into a RACs-branded response with embedded CTA, powered by XDS data (hidden from user).
+Transform a user's compliance question into a RACS-branded response with embedded CTA, powered by XDS data (hidden from user).
 
 ## Inputs
 - **User Message** (string): Compliance question from Telegram
@@ -51,8 +51,8 @@ Transform a user's compliance question into a RACs-branded response with embedde
   - Conversation history (last 2 turns for context)
   - Turn count (for CTA selection hint)
 - **Claude Task**:
-  - Transform XDS data into RACs-branded response
-  - Structure: emoji header → summary → bullet requirements → timeline/cost → pain point → RACs value
+  - Transform XDS data into RACS-branded response
+  - Structure: emoji header → summary → bullet requirements → timeline/cost → pain point → RACS value
   - Identify complexity/urgency signals in data
   - Append appropriate CTA (from strategy pool)
 - **Output**: Fully formatted response (MarkdownV2 compatible)
@@ -75,7 +75,7 @@ Transform a user's compliance question into a RACs-branded response with embedde
 - **Purpose**: Enable natural follow-up questions with context awareness
 
 ## Outputs
-- **Response** (string): RACs-branded answer with CTA
+- **Response** (string): RACS-branded answer with CTA
 - **Format**: Telegram MarkdownV2 compatible
 - **Guaranteed**: Every response includes exactly one CTA
 - **Time**: <3 seconds from user message to response

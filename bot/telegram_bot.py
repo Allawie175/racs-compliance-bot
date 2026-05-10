@@ -34,7 +34,7 @@ orchestrator = Orchestrator()
 
 
 class RACSBot:
-    """RACs compliance chatbot for Telegram."""
+    """RACS compliance chatbot for Telegram."""
 
     @staticmethod
     async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -63,7 +63,7 @@ class RACSBot:
             logger.error(f"Error processing message: {e}")
             await update.message.reply_text(
                 "I encountered an issue processing that message. "
-                "Could you try rephrasing, or type 'contact' to reach the RACs team directly?"
+                "Could you try rephrasing, or type 'contact' to reach the RACS team directly?"
             )
 
 
@@ -86,8 +86,8 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, RACSBot.handle_message))
 
     # Start bot
-    logger.info("RACs Compliance Bot is running (intent-driven mode)...")
-    print("[*] RACs Compliance Bot is polling. Press Ctrl+C to stop.")
+    logger.info("RACS Compliance Bot is running (intent-driven mode)...")
+    print("[*] RACS Compliance Bot is polling. Press Ctrl+C to stop.")
 
     application.run_polling()
 

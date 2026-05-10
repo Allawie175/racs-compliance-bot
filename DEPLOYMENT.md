@@ -1,11 +1,11 @@
-# Deployment Guide — RACs Compliance Bot
+# Deployment Guide — RACS Compliance Bot
 
 ## Pre-Deployment Checklist
 
 ### Development Testing
 - [ ] Run `python validate_setup.py` (all checks pass)
 - [ ] Run `python tools/xds_query.py` (returns results, no errors)
-- [ ] Run `python tools/orchestrator.py` (returns RACs-branded response)
+- [ ] Run `python tools/orchestrator.py` (returns RACS-branded response)
 - [ ] Run bot locally with `/start`, `/ask`, `/contact`, `/help` commands
 - [ ] Test multi-turn conversation (ask follow-up question)
 - [ ] Test lead capture flow (respond "yes" to specialist offer)
@@ -19,7 +19,7 @@
 - [ ] [Optional] AIRTABLE credentials configured (if using lead capture)
 
 ### Brand Verification
-- [ ] All responses mention RACs (not generic AI)
+- [ ] All responses mention RACS (not generic AI)
 - [ ] No mention of XDS in any response
 - [ ] CTAs vary (read 5+ responses, check no repeats)
 - [ ] Response format consistent (emoji, bullets, timeline, CTA)
@@ -208,7 +208,7 @@ sudo nano /etc/systemd/system/racs-bot.service
 
 # Add:
 [Unit]
-Description=RACs Compliance Telegram Bot
+Description=RACS Compliance Telegram Bot
 After=network.target
 
 [Service]
@@ -312,7 +312,7 @@ Set up alerts for:
 
 ### Quarterly
 - [ ] Review bot performance metrics
-- [ ] Audit RACs voice consistency
+- [ ] Audit RACS voice consistency
 - [ ] Plan next improvements (Phase 2 roadmap)
 
 ---

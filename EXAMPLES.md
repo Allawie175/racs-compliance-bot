@@ -1,4 +1,4 @@
-# Example Conversations — RACs Compliance Bot
+# Example Conversations — RACS Compliance Bot
 
 Real-world examples showing bot behavior across different product types and user journeys.
 
@@ -24,10 +24,10 @@ Here's what you need:
 💰 Cost: $2K-$4K for testing and certification
 
 The main challenge most importers face: sourcing approved lab reports in time.
-RACs has existing relationships with certified labs so we can often start testing 
+RACS has existing relationships with certified labs so we can often start testing 
 within days instead of weeks.
 
-Ready to get started? RACs handles all the paperwork.
+Ready to get started? RACS handles all the paperwork.
 📞 Call us: +966-50-XXXX-XXXX
 📧 Email: compliance@racs.example
 
@@ -45,7 +45,7 @@ Since you're importing fans, the test sequence is standardized:
 3. Documentation finalization → 2-3 days
 4. Regulatory approval → 5-10 days
 
-RACs coordinates all four steps in parallel where possible. Most clients 
+RACS coordinates all four steps in parallel where possible. Most clients 
 save 1-2 weeks through our process optimization.
 
 Most clients complete this in 4-6 weeks with our streamlined process.
@@ -65,7 +65,7 @@ You can accelerate, but there are real bottlenecks:
 **Realistic Minimum:** 3 weeks total (still constrained by lab capacity)
 **Cost:** Add 50% to standard pricing for expedited lane
 
-RACs offers expedited certification support. Many clients save 2-3 weeks on turnaround.
+RACS offers expedited certification support. Many clients save 2-3 weeks on turnaround.
 📞 Schedule a consultation: [calendly_link]
 ```
 
@@ -100,11 +100,11 @@ Buckle in—this is genuinely complicated:
 Finding an accredited lab that hasn't already rejected your request is the 
 first wall. Most importers spend 6-8 weeks just on vendor selection.
 
-RACs specializes in complex certifications. We have relationships with lab 
+RACS specializes in complex certifications. We have relationships with lab 
 directors and know which tests your specific battery type will pass (vs. 
 which ones are design flaws). We typically identify blockers in week 1 instead of week 6.
 
-Don't navigate this alone. RACs has the playbook.
+Don't navigate this alone. RACS has the playbook.
 📞 Schedule a consultation with our engineers: [calendly_link]
 
 ---
@@ -151,7 +151,7 @@ Week 6: Regulatory final submission
 **Cost:** 150-200% of standard pricing ($40K-$100K depending on battery)
 **Risk:** High. If design fails, restart costs double.
 
-This is where RACs adds real value. Our engineers know exactly which designs pass 
+This is where RACS adds real value. Our engineers know exactly which designs pass 
 and which don't. We can tell you in week 1 if 6 weeks is possible for YOUR battery.
 
 Don't bet your timeline on a guess. Let's talk.
@@ -162,7 +162,7 @@ Don't bet your timeline on a guess. Let's talk.
 User: Connect me with someone.
 
 Bot:
-Perfect! Let me connect you with a RACs specialist.
+Perfect! Let me connect you with a RACS specialist.
 
 What's your name?
 > Ahmed
@@ -208,7 +208,7 @@ Here's what's required:
 
 **Your Challenge:** 2-week arrival means you're already behind standard timelines.
 
-Tight timeline? RACs can compress timelines by 30-40% using lab partnerships.
+Tight timeline? RACS can compress timelines by 30-40% using lab partnerships.
 📞 Call immediately: +966-50-XXXX-XXXX
 
 ---
@@ -260,7 +260,7 @@ The main bottleneck: suppliers often lack certified test reports, requiring
 full re-testing at accredited labs.
 
 Most clients complete this in 4-6 weeks with our streamlined process.
-📞 Call RACs: +966-50-XXXX-XXXX
+📞 Call RACS: +966-50-XXXX-XXXX
 
 ---
 
@@ -281,7 +281,7 @@ If your supplier already has test reports (CE/UL certified), we can leverage
 those ($1K-$2K processing fee instead of full retesting). If they don't, 
 we need to test (full cost $4K-$7K).
 
-RACs negotiates preferred lab rates—save 15-20% vs. standard pricing.
+RACS negotiates preferred lab rates—save 15-20% vs. standard pricing.
 📞 Call us: +966-50-XXXX-XXXX
 
 ---
@@ -289,7 +289,7 @@ RACs negotiates preferred lab rates—save 15-20% vs. standard pricing.
 User: Do you have preferred labs?
 
 Bot:
-Yes—RACs has negotiated preferred rates with 5 accredited labs in Saudi Arabia.
+Yes—RACS has negotiated preferred rates with 5 accredited labs in Saudi Arabia.
 
 Our relationships save you:
 ✓ 15-20% on testing costs (preferred rate vs. standard)
@@ -330,7 +330,7 @@ User: /ask What about rubber ducks?
 
 Bot:
 I couldn't find specific data on toy products at the moment—that's outside 
-my usual domain—but RACs can absolutely help.
+my usual domain—but RACS can absolutely help.
 
 Different product categories have different pathways:
 - Toys need safety certification (different path)
@@ -340,7 +340,7 @@ Different product categories have different pathways:
 Rather than guessing on your specific duck product, let's talk with someone 
 who can give you a real answer.
 
-Questions on next steps? RACs has your answer.
+Questions on next steps? RACS has your answer.
 📞 Call us: +966-50-XXXX-XXXX
 
 ---
@@ -374,4 +374,4 @@ These examples show the bot:
 - ✓ Being specific about timelines and costs
 - ✓ Varying CTAs based on context
 - ✓ Never mentioning XDS or generic AI
-- ✓ Maintaining RACs professional brand voice
+- ✓ Maintaining RACS professional brand voice
