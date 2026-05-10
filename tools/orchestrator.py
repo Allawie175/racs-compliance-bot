@@ -81,18 +81,13 @@ class Orchestrator:
         tools = [
             {
                 "name": "search_xds",
-                "description": "Search Saudi Arabia import compliance database for a product or HS code. Returns a list of matching HS codes with product names, regulation names, and detail page URLs. Results are paginated—use page parameter to fetch additional results.",
+                "description": "Search Saudi Arabia import compliance database for a product or HS code. Returns a comprehensive list of all matching HS codes with product names, regulation names, and detail page URLs (automatically fetches all pages).",
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "query": {
                             "type": "string",
                             "description": "Product name or HS code to search for"
-                        },
-                        "page": {
-                            "type": "integer",
-                            "description": "Result page number (default 1). Use 2, 3, etc. to fetch more results.",
-                            "default": 1
                         }
                     },
                     "required": ["query"]
@@ -193,11 +188,21 @@ class Orchestrator:
             if tool_name == "search_xds":
                 query = tool_input.get("query", "")
                 page = tool_input.get("page", 1)
-                print(f"[{chat_id}] Tool: search_xds('{query}', page={page})")
-                results = XDSQueryEngine.search(query, page=page)
-                if not results:
+                print(f"[{chat_id}] Tool: search_xds('{query}')")
+
+                # Fetch all pages automatically to give user complete results
+                all_results = []
+                current_page = 1
+                while True:
+                    page_results = XDSQueryEngine.search(query, page=current_page)
+                    if not page_results:
+                        break
+                    all_results.extend(page_results)
+                    current_page += 1
+
+                if not all_results:
                     return json.dumps({"error": "No results found", "results": []}, ensure_ascii=False)
-                return json.dumps(results, ensure_ascii=False)
+                return json.dumps(all_results, ensure_ascii=False)
 
             elif tool_name == "get_regulation_detail":
                 url = tool_input.get("url", "")
@@ -260,9 +265,8 @@ You have access to three tools:
 ### Search Results & Options
 
 When you call search_xds and get multiple results with different HS codes:
-- If you get 5-10 results from page 1, present them as numbered options: "I found these HS codes in our database:\nOption 1: **850440** — Chargers for video game consoles\nOption 2: **950450** — Video game consoles\n\nWhich one best describes your product?"
-- If you get fewer results (say, <5) and suspect there are more pages, you can optionally fetch additional pages (page=2, 3, etc.) to give the user a comprehensive list
-- Consolidate all pages into a single numbered list before asking the user to choose
+- You receive ALL results across all pages automatically (pagination is handled internally)
+- Present them as numbered options: "I found these HS codes in our database:\nOption 1: **850440** — Chargers for video game consoles\nOption 2: **950450** — Video game consoles\n\nWhich one best describes your product?"
 - Once the user picks, call get_regulation_detail with the chosen product's detail_url
 - Present the full compliance requirements in RACS brand voice
 
