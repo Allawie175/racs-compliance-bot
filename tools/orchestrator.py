@@ -190,15 +190,13 @@ class Orchestrator:
                 page = tool_input.get("page", 1)
                 print(f"[{chat_id}] Tool: search_xds('{query}')")
 
-                # Fetch all pages automatically to give user complete results
+                # Fetch first 2 pages to balance completeness and cost
                 all_results = []
-                current_page = 1
-                while True:
+                for current_page in range(1, 3):
                     page_results = XDSQueryEngine.search(query, page=current_page)
                     if not page_results:
                         break
                     all_results.extend(page_results)
-                    current_page += 1
 
                 if not all_results:
                     return json.dumps({"error": "No results found", "results": []}, ensure_ascii=False)
