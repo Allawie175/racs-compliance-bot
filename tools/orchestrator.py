@@ -79,7 +79,9 @@ class Orchestrator:
                     "chosen_hs_code": None,       # 6-digit code chosen by user
                     "sub_code_options": [],       # XDS search results for chosen_hs_code variants
                     "sub_code_question": None,    # Claude-generated narrowing question
-                    "chosen_sub_code": None       # final 10-digit code selected
+                    "chosen_sub_code": None,      # final 10-digit code selected
+                    "failed_choice_count": 0,     # track consecutive failed option matches
+                    "awaiting_restart_confirm": False  # waiting for user to confirm new search
                 },
                 "lead": {
                     "awaiting": None,             # "name" | "email" | "phone" | None
@@ -121,9 +123,17 @@ class Orchestrator:
                     "chosen_hs_code": None,
                     "sub_code_options": [],
                     "sub_code_question": None,
-                    "chosen_sub_code": None
+                    "chosen_sub_code": None,
+                    "failed_choice_count": 0,
+                    "awaiting_restart_confirm": False
                 }
                 response = self._handle_discovery_start(user_message, chat_id)
+                self._update_history(chat_id, user_message, response)
+                return response
+
+            # Priority 0: awaiting restart confirmation
+            if disco.get("awaiting_restart_confirm"):
+                response = self._handle_restart_confirm(user_message, chat_id)
                 self._update_history(chat_id, user_message, response)
                 return response
 
@@ -482,8 +492,17 @@ CRITICAL: Respond with ONLY a valid JSON object. No markdown, no explanation, no
                     break
 
         if not chosen_code:
+            disco["failed_choice_count"] = disco.get("failed_choice_count", 0) + 1
+            if disco["failed_choice_count"] >= 2:
+                disco["awaiting_restart_confirm"] = True
+                disco["failed_choice_count"] = 0
+                return (
+                    "It looks like you might be searching for a different product. "
+                    "Would you like to start a new search? Reply **Yes** to start over, "
+                    "or **No** to continue choosing from the options above."
+                )
             print(f"[DEBUG] [{chat_id}] No match found for: '{user_message}'. Proposed codes: {[c.get('hs_code', '') for c in disco['proposed_hs_codes']]}")
-            return "I'm not sure which code you meant. Could you confirm the code number or option number?"
+            return "I'm not sure which option you meant. Please reply with Option 1, Option 2, or Option 3."
 
         disco["chosen_hs_code"] = chosen_code
         disco["proposed_hs_codes"] = []  # Clear old proposals to prevent state machine re-entry
@@ -503,6 +522,47 @@ CRITICAL: Respond with ONLY a valid JSON object. No markdown, no explanation, no
         # Multiple variants found, ask a clarifying question
         print(f"[DEBUG] [{chat_id}] Multiple variants found, asking sub-code clarification")
         return self._ask_sub_code_clarification(chat_id)
+
+    def _handle_restart_confirm(self, user_message: str, chat_id: str) -> str:
+        """Handle user's response to restart confirmation prompt."""
+        state = self.chat_state[chat_id]
+        disco = state["discovery"]
+        user_lower = user_message.lower().strip()
+
+        affirmative = any(w in user_lower for w in ["yes", "yeah", "yep", "sure", "ok", "okay", "restart", "new", "start over"])
+        negative = any(w in user_lower for w in ["no", "nope", "nah", "cancel", "keep", "continue", "back"])
+
+        if affirmative:
+            # Reset disco dict entirely and start fresh
+            state["discovery"] = {
+                "product_description": "",
+                "clarifications": [],
+                "clarification_count": 0,
+                "proposed_hs_codes": [],
+                "chosen_hs_code": None,
+                "sub_code_options": [],
+                "sub_code_question": None,
+                "chosen_sub_code": None,
+                "failed_choice_count": 0,
+                "awaiting_restart_confirm": False,
+            }
+            return self._handle_discovery_start(user_message, chat_id)
+
+        elif negative:
+            # Clear the flag, re-show proposed codes
+            disco["awaiting_restart_confirm"] = False
+            codes = disco.get("proposed_hs_codes", [])
+            if codes:
+                lines = ["No problem! Here are your options again:\n"]
+                for i, c in enumerate(codes, 1):
+                    lines.append(f"Option {i}: **{c['hs_code']}** — {c['product_name']}")
+                lines.append("\nReply with the option number that best matches your product.")
+                return "\n".join(lines)
+            return "Which option would you like to choose? Reply with Option 1, 2, or 3."
+
+        else:
+            # Ambiguous — ask again clearly
+            return "Please reply **Yes** to start a new search, or **No** to continue with the current options."
 
     def _ask_sub_code_clarification(self, chat_id: str) -> str:
         """Claude generates a smart clarification question to narrow down the sub-code."""
