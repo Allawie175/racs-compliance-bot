@@ -545,7 +545,7 @@ CRITICAL: Respond with ONLY a valid JSON object. No markdown, no explanation, no
         negative = any(w in user_lower for w in ["no", "nope", "nah", "cancel", "keep", "continue", "back"])
 
         if affirmative:
-            # Reset disco dict entirely and start fresh
+            # Reset disco dict entirely and return to idle, asking for new product
             state["discovery"] = {
                 "product_description": "",
                 "clarifications": [],
@@ -558,7 +558,8 @@ CRITICAL: Respond with ONLY a valid JSON object. No markdown, no explanation, no
                 "failed_choice_count": 0,
                 "awaiting_restart_confirm": False,
             }
-            return self._handle_discovery_start(user_message, chat_id)
+            state["mode"] = "idle"
+            return "Great! 🔄 Let's start fresh. What product would you like to import?"
 
         elif negative:
             # Clear the flag, re-show proposed codes
