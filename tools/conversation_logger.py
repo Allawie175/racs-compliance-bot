@@ -12,9 +12,6 @@ from datetime import datetime
 from typing import Optional
 import psycopg2
 from psycopg2.extras import Json
-from dotenv import load_dotenv
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 
