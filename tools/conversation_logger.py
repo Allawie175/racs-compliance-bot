@@ -20,8 +20,8 @@ class ConversationLogger:
     """Logs conversations to PostgreSQL for analysis."""
 
     def __init__(self):
-        self.db_url = os.getenv("DATABASE_URL")
-        print(f"[ConversationLogger] DATABASE_URL: {self.db_url[:50] if self.db_url else 'NOT SET'}...")
+        self.db_url = os.getenv("POSTGRES_URL") or os.getenv("DATABASE_URL")
+        print(f"[ConversationLogger] DB URL: {self.db_url[:50] if self.db_url else 'NOT SET'}...")
         if not self.db_url:
             print("[ConversationLogger] WARNING: DATABASE_URL not set - conversation logging disabled")
             self.db_url = None
