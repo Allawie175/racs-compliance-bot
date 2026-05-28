@@ -22,6 +22,7 @@ class ConversationLogger:
     def __init__(self):
         self.db_url = os.getenv("POSTGRES_URL") or os.getenv("DATABASE_URL")
         print(f"[ConversationLogger] DB URL: {self.db_url[:50] if self.db_url else 'NOT SET'}...")
+        print(f"[ConversationLogger] All env vars with 'DATABASE' or 'POSTGRES': {[(k, v[:30] if len(v) > 30 else v) for k, v in os.environ.items() if 'DATABASE' in k.upper() or 'POSTGRES' in k.upper()]}")
         if not self.db_url:
             print("[ConversationLogger] WARNING: DATABASE_URL not set - conversation logging disabled")
             self.db_url = None
