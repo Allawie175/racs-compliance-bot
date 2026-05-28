@@ -24,8 +24,9 @@ class ConversationLogger:
 
     def __init__(self):
         self.db_url = os.getenv("DATABASE_URL")
+        print(f"[ConversationLogger] DATABASE_URL: {self.db_url[:50] if self.db_url else 'NOT SET'}...")
         if not self.db_url:
-            logger.warning("DATABASE_URL not set - conversation logging disabled")
+            print("[ConversationLogger] WARNING: DATABASE_URL not set - conversation logging disabled")
             self.db_url = None
 
     def save_conversation(
@@ -49,7 +50,9 @@ class ConversationLogger:
         Returns:
             True if successful, False otherwise
         """
+        print(f"[save_conversation] Called for session {session_id}, db_url set: {bool(self.db_url)}")
         if not self.db_url:
+            print(f"[save_conversation] DATABASE_URL not set, returning False")
             return False
 
         try:
