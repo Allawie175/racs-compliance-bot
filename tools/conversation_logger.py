@@ -69,7 +69,7 @@ class ConversationLogger:
             # Insert conversation
             cur.execute(
                 """
-                INSERT INTO conversation_db (
+                INSERT INTO conversation_logs (
                     session_id, user_name, user_email, messages, tools_used, created_at
                 ) VALUES (%s, %s, %s, %s, %s, %s)
                 """,
@@ -112,7 +112,7 @@ class ConversationLogger:
             cur = conn.cursor()
 
             cur.execute(
-                "SELECT * FROM conversation_db WHERE session_id = %s",
+                "SELECT * FROM conversation_logs WHERE session_id = %s",
                 (session_id,)
             )
 
@@ -157,7 +157,7 @@ class ConversationLogger:
             cur.execute(
                 """
                 SELECT session_id, user_name, user_email, tools_used, created_at
-                FROM conversation_db
+                FROM conversation_logs
                 ORDER BY created_at DESC
                 LIMIT %s
                 """,
