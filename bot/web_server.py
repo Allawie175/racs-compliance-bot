@@ -9,6 +9,7 @@ import os
 import sys
 import logging
 import uuid
+import re
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -21,6 +22,7 @@ load_dotenv()
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools.orchestrator import Orchestrator
+from tools.conversation_logger import ConversationLogger
 
 # Setup logging
 logging.basicConfig(
@@ -41,8 +43,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize orchestrator (shared across all requests)
+# Initialize orchestrator and logger (shared across all requests)
 orchestrator = Orchestrator()
+logger_service = ConversationLogger()
 
 
 # Pydantic models for request/response validation
@@ -116,6 +119,17 @@ async def start_session(lead: LeadData):
         # Claude will detect the lead info and acknowledge it
         response = orchestrator.process_message(initial_message, session_id)
 
+        # Save initial conversation
+        history = orchestrator.chat_histories.get(session_id, [])
+        tools_used = list(orchestrator.tools_used.get(session_id, []))
+        logger_service.save_conversation(
+            session_id=session_id,
+            messages=history,
+            user_name=lead.name,
+            user_email=lead.email,
+            tools_used=tools_used
+        )
+
         logger.info(f"✓ Session created: {session_id} for {lead.name}")
 
         return SessionResponse(
@@ -127,6 +141,30 @@ async def start_session(lead: LeadData):
     except Exception as e:
         logger.error(f"Error creating session: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _extract_user_info(history: list) -> tuple[str, str]:
+    """Extract user name and email from conversation history if available."""
+    user_name = None
+    user_email = None
+
+    for msg in history:
+        if msg.get("role") == "user" and isinstance(msg.get("content"), str):
+            content = msg.get("content", "")
+            # Look for patterns like "My name is X, my email is Y"
+            if "my name is" in content.lower():
+                # Simple extraction - could be improved
+                parts = content.lower().split("my name is")
+                if len(parts) > 1:
+                    name_part = parts[1].split(",")[0].strip()
+                    if name_part:
+                        user_name = name_part
+            if "my email is" in content.lower() or "email is" in content.lower():
+                emails = re.findall(r"[\w\.-]+@[\w\.-]+\.\w+", content)
+                if emails:
+                    user_email = emails[0]
+
+    return user_name, user_email
 
 
 @app.post("/webhook/chat", response_model=ChatResponse)
@@ -157,6 +195,19 @@ async def chat_message(chat: ChatMessage):
 
         # Send message to orchestrator
         response = orchestrator.process_message(chat.message, chat.session_id)
+
+        # Save conversation to database
+        history = orchestrator.chat_histories.get(chat.session_id, [])
+        tools_used = list(orchestrator.tools_used.get(chat.session_id, []))
+        user_name, user_email = _extract_user_info(history)
+
+        logger_service.save_conversation(
+            session_id=chat.session_id,
+            messages=history,
+            user_name=user_name,
+            user_email=user_email,
+            tools_used=tools_used
+        )
 
         logger.info(f"✓ Message processed for session: {chat.session_id}")
 

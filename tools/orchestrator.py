@@ -51,6 +51,7 @@ class Orchestrator:
 
         self.model = "claude-sonnet-4-6"
         self.chat_histories: dict[str, list] = {}  # Isolated per-chat history
+        self.tools_used: dict[str, set] = {}  # Track tools used per chat
         self.MAX_HISTORY = 40  # Keep last 20 exchanges (40 messages)
 
     def process_message(self, user_message: str, chat_id: str) -> str:
@@ -58,8 +59,9 @@ class Orchestrator:
         Main entry point: add user message to history, run Claude with tools,
         manage tool use loop, return final response.
         """
-        # Get or init history for this chat
+        # Get or init history and tools for this chat
         history = self.chat_histories.setdefault(chat_id, [])
+        self.tools_used.setdefault(chat_id, set())
 
         # Add user message
         history.append({"role": "user", "content": user_message})
@@ -184,6 +186,9 @@ class Orchestrator:
 
     def _execute_tool(self, tool_name: str, tool_input: dict, chat_id: str) -> str:
         """Execute a tool call and return JSON string result."""
+        # Track tool usage
+        self.tools_used[chat_id].add(tool_name)
+
         try:
             if tool_name == "search_xds":
                 query = tool_input.get("query", "")
