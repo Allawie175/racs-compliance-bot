@@ -72,14 +72,14 @@ class LeadCapture:
             )
 
             if response.status_code in [200, 201]:
-                logger.info(f"Lead submitted successfully: {lead_data.get('email')}")
+                print(f"[LeadCapture] Lead submitted successfully: {lead_data.get('email')}")
                 return True
             else:
-                logger.error(f"Airtable submission failed: {response.status_code} - {response.text}")
+                print(f"[LeadCapture] Airtable submission failed: {response.status_code} - {response.text}")
                 return False
 
         except Exception as e:
-            logger.error(f"Error submitting lead to Airtable: {str(e)}")
+            print(f"[LeadCapture] Error submitting lead to Airtable: {type(e).__name__}: {e}")
             return False
 
     def get_lead_status(self, email: str) -> Optional[dict]:
