@@ -139,17 +139,21 @@ class Orchestrator:
 
             # Check stop reason
             if response.stop_reason == "end_turn":
-                # Claude is done, extract text response
-                text = None
-                for block in response.content:
-                    if hasattr(block, "text"):
-                        text = block.text
-                        break
+                # Concatenate all text blocks (Claude sometimes emits multiple)
+                texts = [b.text for b in response.content if hasattr(b, "text") and b.text]
+                text = "\n\n".join(t.strip() for t in texts if t.strip())
 
-                # Add assistant response to history
                 history.append({"role": "assistant", "content": response.content})
 
-                return text or "I'm having trouble with that. Please try again."
+                if text:
+                    return text
+
+                # No text returned. Pick a sensible default based on the last tool the bot ran.
+                last_tool = self._last_tool_called(history)
+                print(f"[{chat_id}] end_turn with no text. last_tool={last_tool}")
+                if last_tool == "submit_lead":
+                    return "✅ Done — a RACS specialist will reach out to you using the contact info you shared earlier. Expect a response within one business day."
+                return "I'm having trouble with that. Please try again."
 
             elif response.stop_reason == "tool_use":
                 # Claude wants to use a tool
@@ -175,6 +179,20 @@ class Orchestrator:
                 logger.warning(f"[{chat_id}] Unexpected stop_reason: {response.stop_reason}")
                 history.append({"role": "assistant", "content": response.content})
                 return "I encountered an unexpected condition. Please try again."
+
+    @staticmethod
+    def _last_tool_called(history: list) -> Optional[str]:
+        """Walk history backwards and return the name of the most recent tool_use block."""
+        for msg in reversed(history):
+            content = msg.get("content")
+            if not isinstance(content, list):
+                continue
+            for block in reversed(content):
+                name = getattr(block, "name", None) if not isinstance(block, dict) else block.get("name")
+                block_type = getattr(block, "type", None) if not isinstance(block, dict) else block.get("type")
+                if block_type == "tool_use" and name:
+                    return name
+        return None
 
     @staticmethod
     def _extract_hs_code(url: str) -> Optional[str]:
