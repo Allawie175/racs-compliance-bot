@@ -55,10 +55,10 @@ class LeadCapture:
                             "Name": lead_data.get("name", ""),
                             "Email": lead_data.get("email", ""),
                             "Phone": lead_data.get("phone", ""),
-                            "Product Interest": lead_data.get("product_interest", ""),
+                            "Product interest": lead_data.get("product_interest", ""),
                             "Chat ID": lead_data.get("chat_id", ""),
                             "Source": "Telegram Bot",
-                            "Captured At": datetime.now().isoformat()
+                            "Date": datetime.utcnow().isoformat() + "Z"
                         }
                     }
                 ]
