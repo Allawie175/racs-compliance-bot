@@ -16,6 +16,21 @@ from psycopg2.extras import Json
 logger = logging.getLogger(__name__)
 
 
+def _serialize_messages(messages: list) -> str:
+    """Serialize messages, converting Anthropic SDK content blocks (TextBlock, ToolUseBlock, etc.) to dicts."""
+
+    def encode(obj):
+        if hasattr(obj, "model_dump"):
+            return obj.model_dump()
+        if hasattr(obj, "dict"):
+            return obj.dict()
+        if hasattr(obj, "__dict__"):
+            return obj.__dict__
+        return str(obj)
+
+    return json.dumps(messages, ensure_ascii=False, default=encode)
+
+
 class ConversationLogger:
     """Logs conversations to PostgreSQL for analysis."""
 
@@ -75,7 +90,7 @@ class ConversationLogger:
                     session_id,
                     user_name,
                     user_email,
-                    json.dumps(messages, ensure_ascii=False),
+                    _serialize_messages(messages),
                     tools_str,
                     created_at,
                 )
