@@ -6,7 +6,6 @@ from typing import Optional
 from urllib.parse import urlparse, parse_qs
 from dotenv import load_dotenv
 from anthropic import Anthropic
-from tools.xds_query import XDSQueryEngine
 from tools.conversation_logger import ConversationLogger
 
 load_dotenv()
@@ -16,6 +15,13 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+_engine_choice = os.getenv("HS_ENGINE", "local").strip().lower()
+if _engine_choice == "xds":
+    from tools.xds_query import XDSQueryEngine
+else:
+    from tools.local_xds_query import LocalXDSQueryEngine as XDSQueryEngine
+logger.info(f"HS engine active: {_engine_choice} ({XDSQueryEngine.__module__}.{XDSQueryEngine.__name__})")
 
 # Load brand voice and CTA strategy
 BRAND_VOICE_PATH = "brand/racs_voice.md"

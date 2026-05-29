@@ -51,3 +51,6 @@ Thumbs.db
 # Project-specific
 .tmp/errors.log
 .claude/
+
+# hs_search_tool: build inputs (30MB+) — outputs in data/ are committed
+hs_search_tool/sources/

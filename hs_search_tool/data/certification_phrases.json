@@ -1,0 +1,37 @@
+{
+  "supplier_declaration_free_trade": {
+    "en": "Requires Supplier Conformity Declaration (Free-Trade)",
+    "ar": "يتطلب إقرار مطابقة المورّد (تجارة حرة)",
+    "regulated": false
+  },
+  "saber_coc_or_qm": {
+    "en": "Requires Saber Certificate of Conformity or Quality Mark Certificate",
+    "ar": "يتطلب شهادة مطابقة سابر أو شهادة علامة الجودة",
+    "regulated": true
+  },
+  "quality_mark_only": {
+    "en": "Requires Quality Mark Certificate",
+    "ar": "يتطلب شهادة علامة الجودة",
+    "regulated": true
+  },
+  "gcts_or_qm": {
+    "en": "Requires GCTS Certificate or Quality Mark Certificate",
+    "ar": "يتطلب شهادة GCTS أو شهادة علامة الجودة",
+    "regulated": true
+  },
+  "multi_route": {
+    "en": "Requires Saber Certificate of Conformity or GCTS Certificate or IECEE Certificate or Quality Mark Certificate",
+    "ar": "يتطلب شهادة مطابقة سابر أو شهادة GCTS أو شهادة IECEE أو شهادة علامة الجودة",
+    "regulated": true
+  },
+  "type_approval": {
+    "en": "Requires Type Approval Certificate",
+    "ar": "يتطلب شهادة الموافقة على النوع",
+    "regulated": true
+  },
+  "unknown": {
+    "en": "Certification requirement unclear — please contact RACs for verification",
+    "ar": "متطلبات الشهادة غير واضحة — يرجى التواصل مع راكس للتحقق",
+    "regulated": true
+  }
+}

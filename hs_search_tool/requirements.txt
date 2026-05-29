@@ -1,0 +1,6 @@
+# Runtime dependencies for the HS search tool.
+# The search engine itself uses only the Python standard library.
+# pandas is required ONLY for the data preparation script (prepare_data.py).
+
+pandas>=2.0          # for prepare_data.py (data extraction from master CSVs)
+pytest>=7.0          # for running the test suite

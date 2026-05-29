@@ -1,0 +1,32 @@
+{
+  "_meta": {
+    "purpose": "Bilingual synonym expansion for the search engine. Maps consumer-language terms to trade-language terms ACTUALLY PRESENT in saber_master.csv.",
+    "format": "canonical_term -> list of synonyms. Canonical must appear as a substring in normalized product_name_ar (or product_name_en). Patched after v1.1.0 by the live-bot agent — broken canonicals from v1.1.0 (مستحضرات تجميل, اجهزه كهربائيه, احذيه, etc.) had zero hits in data and were replaced with verified terms.",
+    "verified_against": "C:/Users/alial/SASO/saber_master.csv on 2026-05-29"
+  },
+
+  "تجميل":        ["مستحضرات تجميل", "منتج تجميل", "منتجات تجميل", "cosmetic", "cosmetics", "makeup", "مكياج", "كريم", "زينة"],
+  "كهربائي":      ["جهاز كهربائي", "أجهزة كهربائية", "اجهزه كهربائيه", "electric", "electric device", "electrical appliance", "electrical"],
+  "أحذية":        ["احذيه", "حذاء", "نعل", "شوز", "shoe", "shoes", "footwear", "boot", "بوت"],
+  "أغذية":        ["اطعمه", "طعام", "food", "foodstuff", "أطعمة", "مأكولات"],
+  "أدوية":        ["ادويه", "دواء", "medicine", "drug", "pharmaceutical", "أدوية بشرية", "صيدلاني"],
+  "منزلية":       ["أدوات منزلية", "ادوات منزليه", "household", "household items", "housewares", "kitchen"],
+  "هاتف":         ["telephone", "تلفون", "تليفون", "phone", "mobile", "cellphone", "smartphone", "اتصال", "جوال"],
+  "ليد":          ["led", "LED", "أضواء ليد", "led light", "led lights", "led lamp", "إنارة", "إضاءة"],
+
+  "مدخرات كهربائية": ["بطارية", "بطاريات", "battery", "batteries"],
+  "سيارات":       ["مركبات", "سيارة", "مركبة", "car", "vehicle", "automobile"],
+  "ملابس":        ["ثياب", "لباس", "clothing", "apparel", "garment"],
+  "العاب":        ["لعبه", "toy", "toys", "game"],
+  "scooter":      ["سكوتر", "skooter", "electric scooter", "كهربائي سكوتر"],
+
+  "مفاتيح":       ["keyboard", "keyboards", "لوحة مفاتيح", "كيبورد"],
+  "محمول":        ["laptop", "laptops", "notebook", "حاسوب محمول", "noteboook"],
+  "خوذ":          ["helmet", "helmets", "خوذة"],
+  "إطار":         ["tire", "tires", "tyre", "tyres", "إطارات"],
+  "أقفال":        ["lock", "locks", "padlock", "padlocks", "قفل"],
+  "مضخات":        ["pump", "pumps", "مضخة"],
+  "تلفزيون":      ["television", "tv", "tvs"],
+  "سماعات":       ["headphone", "headphones", "earphone", "earphones", "سماعة"],
+  "سجائر":        ["cigarette", "cigarettes", "vape", "vapes", "vaping", "e-cigarette", "ecig", "electronic cigarette", "electronic cigarettes"]
+}
