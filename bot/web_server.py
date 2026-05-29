@@ -10,6 +10,7 @@ import sys
 import logging
 import uuid
 import re
+from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -127,6 +128,7 @@ async def start_session(lead: LeadData):
             messages=history,
             user_name=lead.name,
             user_email=lead.email,
+            user_phone=lead.phone,
             tools_used=tools_used
         )
 
@@ -143,28 +145,37 @@ async def start_session(lead: LeadData):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def _extract_user_info(history: list) -> tuple[str, str]:
-    """Extract user name and email from conversation history if available."""
+def _extract_user_info(history: list) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """Extract user name, email, and phone from conversation history (preserving original case)."""
     user_name = None
     user_email = None
+    user_phone = None
+
+    name_pattern = re.compile(r"my name is\s+([^,\n]+?)(?:,|$|\s+my\s+email)", re.IGNORECASE)
+    email_pattern = re.compile(r"[\w\.-]+@[\w\.-]+\.\w+")
+    phone_pattern = re.compile(r"\+?\d[\d\s\-]{7,}\d")
 
     for msg in history:
-        if msg.get("role") == "user" and isinstance(msg.get("content"), str):
-            content = msg.get("content", "")
-            # Look for patterns like "My name is X, my email is Y"
-            if "my name is" in content.lower():
-                # Simple extraction - could be improved
-                parts = content.lower().split("my name is")
-                if len(parts) > 1:
-                    name_part = parts[1].split(",")[0].strip()
-                    if name_part:
-                        user_name = name_part
-            if "my email is" in content.lower() or "email is" in content.lower():
-                emails = re.findall(r"[\w\.-]+@[\w\.-]+\.\w+", content)
-                if emails:
-                    user_email = emails[0]
+        if msg.get("role") != "user" or not isinstance(msg.get("content"), str):
+            continue
+        content = msg["content"]
 
-    return user_name, user_email
+        if user_name is None:
+            m = name_pattern.search(content)
+            if m:
+                user_name = m.group(1).strip()
+
+        if user_email is None:
+            m = email_pattern.search(content)
+            if m:
+                user_email = m.group(0)
+
+        if user_phone is None:
+            m = phone_pattern.search(content)
+            if m:
+                user_phone = m.group(0).strip()
+
+    return user_name, user_email, user_phone
 
 
 @app.post("/webhook/chat", response_model=ChatResponse)
@@ -199,13 +210,14 @@ async def chat_message(chat: ChatMessage):
         # Save conversation to database
         history = orchestrator.chat_histories.get(chat.session_id, [])
         tools_used = list(orchestrator.tools_used.get(chat.session_id, []))
-        user_name, user_email = _extract_user_info(history)
+        user_name, user_email, user_phone = _extract_user_info(history)
 
         logger_service.save_conversation(
             session_id=chat.session_id,
             messages=history,
             user_name=user_name,
             user_email=user_email,
+            user_phone=user_phone,
             tools_used=tools_used
         )
 
