@@ -85,11 +85,11 @@ class ConversationLogger:
             cur.close()
             conn.close()
 
-            logger.info(f"Saved conversation {session_id} to database")
+            print(f"[save_conversation] Saved conversation {session_id} to database")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to save conversation {session_id}: {e}")
+            print(f"[save_conversation] FAILED for {session_id}: {type(e).__name__}: {e}")
             return False
 
     def get_conversation(self, session_id: str) -> Optional[dict]:
