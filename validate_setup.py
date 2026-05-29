@@ -83,7 +83,6 @@ def check_directory_structure():
         "tools/xds_query.py",
         "tools/orchestrator.py",
         "bot/telegram_bot.py",
-        "bot/lead_capture.py",
         "workflows/compliance_query.md",
         "README.md",
         "requirements.txt",

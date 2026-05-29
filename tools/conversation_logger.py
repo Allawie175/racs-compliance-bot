@@ -15,6 +15,14 @@ import psycopg2
 logger = logging.getLogger(__name__)
 
 
+STAGE_PRIORITY = {
+    "form_submitted": 1,
+    "searched": 2,
+    "viewed_regulation": 3,
+    "requested_callback": 4,
+}
+
+
 def _serialize_messages(messages: list) -> str:
     """Serialize messages, converting Anthropic SDK content blocks (TextBlock, ToolUseBlock, etc.) to dicts."""
 
@@ -94,6 +102,60 @@ class ConversationLogger:
 
         except Exception as e:
             print(f"[save_conversation] FAILED for {session_id}: {type(e).__name__}: {e}")
+            return False
+
+    def advance_stage(
+        self,
+        session_id: str,
+        new_stage: str,
+        product_interest: Optional[str] = None,
+    ) -> bool:
+        """
+        Advance a conversation's funnel stage. Only moves forward — never regresses.
+        Stages: form_submitted -> searched -> viewed_regulation -> requested_callback.
+        Sets callback_requested_at to now() when new_stage is requested_callback.
+        """
+        if not self.db_url:
+            return False
+        if new_stage not in STAGE_PRIORITY:
+            print(f"[advance_stage] Unknown stage: {new_stage}")
+            return False
+
+        try:
+            conn = psycopg2.connect(self.db_url)
+            cur = conn.cursor()
+
+            new_priority = STAGE_PRIORITY[new_stage]
+            stage_cases = " ".join(
+                f"WHEN stage = '{s}' THEN {p}" for s, p in STAGE_PRIORITY.items()
+            )
+
+            cur.execute(
+                f"""
+                UPDATE conversation_logs
+                SET
+                    stage = CASE
+                        WHEN (CASE {stage_cases} ELSE 0 END) < %s THEN %s
+                        ELSE stage
+                    END,
+                    product_interest = COALESCE(%s, product_interest),
+                    callback_requested_at = CASE
+                        WHEN %s = 'requested_callback' AND callback_requested_at IS NULL
+                        THEN NOW()
+                        ELSE callback_requested_at
+                    END
+                WHERE session_id = %s
+                """,
+                (new_priority, new_stage, product_interest, new_stage, session_id),
+            )
+
+            conn.commit()
+            cur.close()
+            conn.close()
+            return True
+
+        except Exception as e:
+            print(f"[advance_stage] FAILED for {session_id}: {type(e).__name__}: {e}")
             return False
 
     def get_conversation(self, session_id: str) -> Optional[dict]:

@@ -1,10 +1,13 @@
 import os
 import json
 import logging
+import re
 from typing import Optional
+from urllib.parse import urlparse, parse_qs
 from dotenv import load_dotenv
 from anthropic import Anthropic
 from tools.xds_query import XDSQueryEngine
+from tools.conversation_logger import ConversationLogger
 
 load_dotenv()
 
@@ -53,6 +56,8 @@ class Orchestrator:
         self.chat_histories: dict[str, list] = {}  # Isolated per-chat history
         self.tools_used: dict[str, set] = {}  # Track tools used per chat
         self.MAX_HISTORY = 40  # Keep last 20 exchanges (40 messages)
+        self.product_interests: dict[str, list[str]] = {}  # HS codes user viewed, per chat
+        self._db = ConversationLogger()
 
     def process_message(self, user_message: str, chat_id: str) -> str:
         """
@@ -111,24 +116,11 @@ class Orchestrator:
             },
             {
                 "name": "submit_lead",
-                "description": "Submit user's contact information to RACS CRM. Only call this after you have collected the user's name, email, and phone number.",
+                "description": "Mark this lead as 'requested callback' in the RACS CRM. Only call this when the user explicitly asks to be contacted by a specialist (e.g., 'have someone call me', 'I'd like to talk to a specialist', 'can you reach out?'). The user's contact info is already saved from the initial form — you do not need to collect it again. This tool just signals the highest level of intent so Sales prioritizes outreach.",
                 "input_schema": {
                     "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "User's name"
-                        },
-                        "email": {
-                            "type": "string",
-                            "description": "User's email address"
-                        },
-                        "phone": {
-                            "type": "string",
-                            "description": "User's phone number"
-                        }
-                    },
-                    "required": ["name", "email", "phone"]
+                    "properties": {},
+                    "required": []
                 }
             }
         ]
@@ -184,6 +176,16 @@ class Orchestrator:
                 history.append({"role": "assistant", "content": response.content})
                 return "I encountered an unexpected condition. Please try again."
 
+    @staticmethod
+    def _extract_hs_code(url: str) -> Optional[str]:
+        """Pull the hscode= query param out of an XDS detail URL."""
+        try:
+            q = parse_qs(urlparse(url).query)
+            code = q.get("hscode", [None])[0]
+            return code if code else None
+        except Exception:
+            return None
+
     def _execute_tool(self, tool_name: str, tool_input: dict, chat_id: str) -> str:
         """Execute a tool call and return JSON string result."""
         # Track tool usage
@@ -192,7 +194,6 @@ class Orchestrator:
         try:
             if tool_name == "search_xds":
                 query = tool_input.get("query", "")
-                page = tool_input.get("page", 1)
                 print(f"[{chat_id}] Tool: search_xds('{query}')")
 
                 # Fetch first 2 pages to balance completeness and cost
@@ -203,6 +204,9 @@ class Orchestrator:
                         break
                     all_results.extend(page_results)
 
+                # Advance funnel stage: user searched
+                self._db.advance_stage(chat_id, "searched")
+
                 if not all_results:
                     return json.dumps({"error": "No results found", "results": []}, ensure_ascii=False)
                 return json.dumps(all_results, ensure_ascii=False)
@@ -211,28 +215,29 @@ class Orchestrator:
                 url = tool_input.get("url", "")
                 print(f"[{chat_id}] Tool: get_regulation_detail()")
                 detail = XDSQueryEngine.get_detail(url)
+
+                # Advance funnel stage and record which HS code the user viewed
+                hs_code = self._extract_hs_code(url)
+                if hs_code:
+                    interests = self.product_interests.setdefault(chat_id, [])
+                    if hs_code not in interests:
+                        interests.append(hs_code)
+                    product_interest = ",".join(interests)
+                else:
+                    product_interest = None
+                self._db.advance_stage(chat_id, "viewed_regulation", product_interest=product_interest)
+
                 if not detail:
                     return json.dumps({"error": "Could not fetch regulation details"}, ensure_ascii=False)
                 return json.dumps(detail, ensure_ascii=False)
 
             elif tool_name == "submit_lead":
-                name = tool_input.get("name", "")
-                email = tool_input.get("email", "")
-                phone = tool_input.get("phone", "")
-                print(f"[{chat_id}] Tool: submit_lead(name='{name}', email='{email}', phone='{phone}')")
-
-                from bot.lead_capture import LeadCapture
-                lc = LeadCapture()
-                success = lc.submit_lead({
-                    "name": name,
-                    "email": email,
-                    "phone": phone,
-                    "chat_id": chat_id
-                })
-                if success:
-                    return json.dumps({"success": True, "message": "Lead submitted successfully"}, ensure_ascii=False)
-                else:
-                    return json.dumps({"success": False, "message": "Lead submission failed"}, ensure_ascii=False)
+                print(f"[{chat_id}] Tool: submit_lead (callback requested)")
+                product_interest = ",".join(self.product_interests.get(chat_id, [])) or None
+                ok = self._db.advance_stage(chat_id, "requested_callback", product_interest=product_interest)
+                if ok:
+                    return json.dumps({"success": True, "message": "Callback request flagged in CRM"}, ensure_ascii=False)
+                return json.dumps({"success": False, "message": "Could not flag callback in CRM"}, ensure_ascii=False)
 
             else:
                 return json.dumps({"error": f"Unknown tool: {tool_name}"}, ensure_ascii=False)
@@ -294,7 +299,7 @@ Never omit the regulation summary or SABER links. Users want to understand WHAT 
 - **User describes a product**: Search with search_xds, present options if multiple, or fetch detail directly if one match
 - **User provides an HS code**: Search with search_xds, then fetch detail
 - **User pivots to a different product**: Just search again — don't get stuck. The user said "No I mean toys", so search for toys. Natural conversation, not state machines.
-- **User wants contact**: Collect name → email → phone → submit_lead
+- **User wants contact**: Their info was already captured by the form before chat started. Just call `submit_lead` (no arguments needed) to flag the callback request — do NOT re-collect name/email/phone.
 - **Follow-up questions**: Use conversation history to answer questions about the product already discussed
 
 ### Critical Rules
@@ -317,7 +322,7 @@ Never omit the regulation summary or SABER links. Users want to understand WHAT 
 
 4. **Conversational pivots**. If the user says "Actually, I want to import Y instead", just search for Y. No state machine logic, no "are you sure?" — just flow naturally.
 
-5. **Lead capture is conversational**. Don't ask "name, email, phone" in a form. Ask naturally: "I'd love to connect you with a specialist. What's your name?" → user replies → "Great! And what's your email?" → etc. Only call submit_lead once you have all three.
+5. **Do NOT collect name/email/phone in chat.** The user already filled a form before the chat opened — their contact info is on file. When the user asks to be contacted by a specialist, simply confirm warmly (e.g., "Got it, I'll have a specialist reach out to you at the email you shared.") and call `submit_lead` to flag the callback request. Asking for info again makes the user feel the bot wasn't paying attention.
 
 6. **Format matters**. Use the RACS brand voice structure:
    - Emoji header (e.g., 🛴 for product)
@@ -350,17 +355,11 @@ User: "No I mean toys"
 Assistant: [calls search_xds for "toys"]
 Assistant: "I found these toy-related codes:\nOption 1: **950450** — Toys and games (5 matches)..."
 
-### Flow 3: Lead Capture
+### Flow 3: Callback Request (contact info already on file)
 
 User: "Can someone from your team reach out?"
-Assistant: "I'd love to connect you with a RACS specialist. What's your name?"
-User: "Ali"
-Assistant: "Great, Ali! What's your email address?"
-User: "ali@example.com"
-Assistant: "Perfect! And your phone number?"
-User: "+966-55-123-4567"
-Assistant: [calls submit_lead with name, email, phone]
-Assistant: "✅ Thank you! A RACS specialist will reach out to you at ali@example.com..."
+Assistant: [calls submit_lead — no arguments]
+Assistant: "✅ Done — a RACS specialist will reach out to you at the email and phone you shared earlier. Expect contact within one business day. Anything else I can help with in the meantime?"
 
 ---
 
