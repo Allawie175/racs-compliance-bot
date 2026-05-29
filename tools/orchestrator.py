@@ -127,21 +127,38 @@ class Orchestrator:
                     "type": "object",
                     "properties": {},
                     "required": []
-                }
+                },
+                "cache_control": {"type": "ephemeral"},
             }
         ]
 
         system_prompt = self._build_system_prompt()
+        system_blocks = [
+            {
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ]
 
         while True:
             # Call Claude
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=1024,
-                system=system_prompt,
+                system=system_blocks,
                 messages=history,
-                tools=tools
+                tools=tools,
             )
+
+            # Log cache stats so we can verify caching in Railway logs
+            usage = getattr(response, "usage", None)
+            if usage is not None:
+                cw = getattr(usage, "cache_creation_input_tokens", 0) or 0
+                cr = getattr(usage, "cache_read_input_tokens", 0) or 0
+                inp = getattr(usage, "input_tokens", 0) or 0
+                out = getattr(usage, "output_tokens", 0) or 0
+                print(f"[{chat_id}] usage in={inp} cache_w={cw} cache_r={cr} out={out}")
 
             # Check stop reason
             if response.stop_reason == "end_turn":
