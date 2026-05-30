@@ -40,7 +40,7 @@ _engine = SearchEngine(data_dir=DATA_DIR)
 class LocalXDSQueryEngine:
     """Drop-in replacement for tools.xds_query.XDSQueryEngine."""
 
-    PAGE_SIZE = 10
+    PAGE_SIZE = 15
 
     @classmethod
     def search(cls, query: str, page: int = 1) -> list[dict]:
