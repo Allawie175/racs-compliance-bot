@@ -101,6 +101,16 @@ class LocalXDSQueryEngine:
             else "Non-Regulated — Free-Trade route"
         )
 
+        # Structured requirements breakdown derived from req_code is the sole
+        # source of truth for compliance requirements. The old certification_*
+        # fields used to live here too and were derived from the legacy
+        # certification_key bucket — they sometimes disagreed with the req_code
+        # parse (e.g. listed "GCTS or Saber CoC" generically when req_code said
+        # only QM is the option), which caused the model to render the wrong
+        # alternatives. They're gone now; the model must use `requirements`.
+        hs_row = _engine._hs_codes_by_code.get(detail.hs_code) or {}  # type: ignore[attr-defined]
+        req_code = (hs_row.get("req_code") or "").strip()
+
         payload: dict = {
             "hs_code": detail.hs_code,
             "product_name_ar": detail.product_name_ar,
@@ -108,18 +118,9 @@ class LocalXDSQueryEngine:
             "regulation_name": regulation_name,
             "regulation_summary": regulation_summary,
             "products_covered": detail.product_name_ar,
-            "certification_requirements": detail.certification.phrase_en
-                or detail.certification.phrase_ar,
-            "certification_requirements_ar": detail.certification.phrase_ar,
             "product_classification": product_classification,
             "saber_links": saber_links,
         }
-
-        # New: structured requirements breakdown derived from req_code.
-        # Bot should prefer this over `certification_requirements` going forward
-        # because it distinguishes "pick one of" from "all required".
-        hs_row = _engine._hs_codes_by_code.get(detail.hs_code) or {}  # type: ignore[attr-defined]
-        req_code = (hs_row.get("req_code") or "").strip()
         if req_code:
             payload["req_code"] = req_code
             payload["requirements"] = _engine.parse_req_code(req_code)  # type: ignore[attr-defined]
