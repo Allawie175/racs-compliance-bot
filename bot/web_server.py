@@ -22,8 +22,13 @@ load_dotenv()
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools.orchestrator import Orchestrator
 from tools.conversation_logger import ConversationLogger
+
+_llm_provider = os.getenv("LLM_PROVIDER", "openrouter").strip().lower()
+if _llm_provider == "anthropic":
+    from tools.orchestrator import Orchestrator
+else:
+    from tools.orchestrator_openrouter import OpenRouterOrchestrator as Orchestrator
 
 # Setup logging
 logging.basicConfig(
@@ -31,6 +36,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+logger.info(f"LLM provider: {_llm_provider} (orchestrator={Orchestrator.__module__}.{Orchestrator.__name__})")
 
 # Initialize FastAPI app
 app = FastAPI(title="RACS Compliance Bot - Web API")

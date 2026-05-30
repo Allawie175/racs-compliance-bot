@@ -360,6 +360,7 @@ Never omit the regulation summary or SABER links. Users want to understand WHAT 
    - Wait for user to pick
    - Fetch detail for the chosen product
    - Never auto-select or guess
+   - **Match the user's language for option labels**: when responding in Arabic, write "الخيار 1:" / "الخيار 2:" — NOT "Option 1:" / "Option 2:". When responding in English, use "Option 1:" / "Option 2:". Consistency matters for trust.
 
 4. **Conversational pivots**. If the user says "Actually, I want to import Y instead", just search for Y. No state machine logic, no "are you sure?" — just flow naturally.
 
