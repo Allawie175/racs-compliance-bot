@@ -115,6 +115,15 @@ class LocalXDSQueryEngine:
             "saber_links": saber_links,
         }
 
+        # New: structured requirements breakdown derived from req_code.
+        # Bot should prefer this over `certification_requirements` going forward
+        # because it distinguishes "pick one of" from "all required".
+        hs_row = _engine._hs_codes_by_code.get(detail.hs_code) or {}  # type: ignore[attr-defined]
+        req_code = (hs_row.get("req_code") or "").strip()
+        if req_code:
+            payload["req_code"] = req_code
+            payload["requirements"] = _engine.parse_req_code(req_code)  # type: ignore[attr-defined]
+
         # Parent context — helps Claude orient the user
         if detail.parent_4_description:
             payload["parent_4"] = {

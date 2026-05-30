@@ -192,6 +192,8 @@ class SearchEngine:
         self._regulations: dict[str, dict] = {}
         self._parent_codes: dict[tuple[int, str], dict] = {}
         self._synonyms: dict[str, list[str]] = {}
+        # req_code lookup table: cert_code -> {kind, name_en, name_ar, description_en}
+        self._cert_codes: dict[str, dict] = {}
         # Precomputed for fast search (Arabic stemmed + English lowercased):
         self._normalized_product_name_ar: dict[str, str] = {}
         self._normalized_product_name_en: dict[str, str] = {}
@@ -202,10 +204,84 @@ class SearchEngine:
 
     def _load(self) -> None:
         self._load_certification_phrases()
+        self._load_cert_codes()
         self._load_synonyms()
         self._load_regulations()
         self._load_parent_codes()
         self._load_hs_codes()
+
+    def _load_cert_codes(self) -> None:
+        """Load the req_code lookup table (code -> kind + bilingual phrases)."""
+        path = self.data_dir / "cert_codes.csv"
+        if not path.exists():
+            return
+        with open(path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                code = (row.get("code") or "").strip()
+                if code:
+                    self._cert_codes[code] = row
+
+    def parse_req_code(self, req_code: str) -> dict:
+        """Parse `REG-XXX|cert(-cert)*|extra*` into a structured breakdown.
+
+        Returns:
+            {
+                "raw": "REG-056|QM-COC|WEC",
+                "regulation_id": "REG-056",
+                "cert_options": [{code, name_en, name_ar, ...}, ...],  # pick ONE
+                "extras":       [{code, name_en, name_ar, ...}, ...],  # ALL required
+            }
+        """
+        empty = {"raw": req_code or "", "regulation_id": None, "cert_options": [], "extras": []}
+        if not req_code:
+            return empty
+        segments = [s.strip() for s in req_code.split("|") if s.strip()]
+        if not segments:
+            return empty
+
+        regulation_id = segments[0]
+        cert_options: list[dict] = []
+        extras: list[dict] = []
+
+        for seg in segments[1:]:
+            # Inside a segment, `-` separates OR-alternates (e.g. QM-COC).
+            # Compound cert names are already underscored (e.g. SELF_DEC), so `-`
+            # is unambiguously the OR operator here.
+            sub_codes = [c.strip() for c in seg.split("-") if c.strip()]
+            if not sub_codes:
+                continue
+            # If any sub-code is an "extra" kind, treat the whole segment as extras
+            # individually. If all are "cert_option" (or unknown), treat the segment
+            # as one OR-group.
+            kinds = [(self._cert_codes.get(c) or {}).get("kind") for c in sub_codes]
+            if all(k == "extra" for k in kinds):
+                for c in sub_codes:
+                    extras.append(self._cert_code_record(c))
+            else:
+                # Mixed or all-options: surface as an OR-group of cert options
+                for c in sub_codes:
+                    cert_options.append(self._cert_code_record(c))
+
+        return {
+            "raw": req_code,
+            "regulation_id": regulation_id,
+            "cert_options": cert_options,
+            "extras": extras,
+        }
+
+    def _cert_code_record(self, code: str) -> dict:
+        """Resolve a cert code to a small dict, falling back to bare code if unknown."""
+        meta = self._cert_codes.get(code)
+        if meta:
+            return {
+                "code": code,
+                "kind": meta.get("kind", ""),
+                "name_en": meta.get("name_en", ""),
+                "name_ar": meta.get("name_ar", ""),
+                "description_en": meta.get("description_en", ""),
+            }
+        return {"code": code, "kind": "unknown", "name_en": code, "name_ar": code, "description_en": ""}
 
     def _load_certification_phrases(self) -> None:
         path = self.data_dir / "certification_phrases.json"
