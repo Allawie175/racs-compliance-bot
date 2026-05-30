@@ -295,11 +295,21 @@ class SearchEngine:
             kinds = [(self._cert_codes.get(c) or {}).get("kind") for c in sub_codes]
             if all(k == "extra" for k in kinds):
                 for c in sub_codes:
-                    extras.append(self._cert_code_record(c))
+                    rec = self._cert_code_record(c)
+                    rec["kind"] = "extra"
+                    extras.append(rec)
             else:
-                # Mixed or all-options: surface as an OR-group of cert options
+                # Mixed or all-options: surface as an OR-group of cert options.
+                # Force kind="cert_option" so the inline tag matches array
+                # placement — without this, a code whose default kind in
+                # requirements.csv is "extra" (e.g. IECEE) appears inside
+                # cert_options carrying kind="extra", and the model reads
+                # that tag and renders it as an additional requirement
+                # instead of an alternative.
                 for c in sub_codes:
-                    cert_options.append(self._cert_code_record(c))
+                    rec = self._cert_code_record(c)
+                    rec["kind"] = "cert_option"
+                    cert_options.append(rec)
 
         return {
             "raw": req_code,
