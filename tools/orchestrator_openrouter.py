@@ -76,10 +76,12 @@ class OpenRouterOrchestrator:
                 "function": {
                     "name": "search_xds",
                     "description": (
-                        "Search Saudi Arabia import compliance database for a product or HS code. "
-                        "Returns a comprehensive list of all matching HS codes with product names, "
-                        "regulation names, and detail page URLs. ALWAYS pass an English query — if "
-                        "the user describes the product in Arabic, translate it to English before calling."
+                        "Search the Saudi Arabia import compliance database for a product or HS code. "
+                        "Returns matching HS codes with product names, regulation names, and detail URLs. "
+                        "Pass the query in the SAME LANGUAGE the user used — our database is Arabic-primary, "
+                        "so Arabic queries usually have better coverage. If the first call returns 0 hits, "
+                        "retry ONCE with a translation to the other language (Arabic ↔ English). "
+                        "HS code digits are language-agnostic — pass as-is."
                     ),
                     "parameters": {
                         "type": "object",
