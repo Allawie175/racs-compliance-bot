@@ -204,23 +204,61 @@ class SearchEngine:
 
     def _load(self) -> None:
         self._load_certification_phrases()
-        self._load_cert_codes()
         self._load_synonyms()
-        self._load_regulations()
+        self._load_requirements()
         self._load_parent_codes()
         self._load_hs_codes()
 
-    def _load_cert_codes(self) -> None:
-        """Load the req_code lookup table (code -> kind + bilingual phrases)."""
-        path = self.data_dir / "cert_codes.csv"
+    def _load_requirements(self) -> None:
+        """Load the unified requirements.csv (single source of truth for every
+        component code: REG-XXX regulations and cert codes alike).
+
+        Populates two internal indexes from the same source:
+          - self._regulations[code]: legacy shape used by RegulationInfo builder
+          - self._cert_codes[code]:  legacy shape used by parse_req_code()
+        This lets the rest of the engine keep its existing call sites unchanged.
+        """
+        path = self.data_dir / "requirements.csv"
         if not path.exists():
             return
         with open(path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
+            for row in csv.DictReader(f):
                 code = (row.get("code") or "").strip()
-                if code:
-                    self._cert_codes[code] = row
+                if not code:
+                    continue
+                kind = (row.get("kind") or "").strip()
+                # Regulation rows feed the RegulationInfo lookup
+                if kind == "regulation":
+                    self._regulations[code] = {
+                        "regulation_id": code,
+                        "regulation_name_ar": (row.get("name_ar") or "").strip(),
+                        "regulation_name_en": (row.get("name_en") or "").strip(),
+                        "summary": (row.get("summary") or "").strip(),
+                        "step_by_step_guide": (row.get("step_by_step_guide") or "").strip(),
+                        "estimated_cost": (row.get("estimated_cost") or "").strip(),
+                        "estimated_time_needed": (row.get("estimated_time") or "").strip(),
+                        "pdf_link": (row.get("pdf_link") or "").strip(),
+                        "required_documents": (row.get("required_documents") or "").strip(),
+                        "issuing_authorities": (row.get("issuing_authorities") or "").strip(),
+                        "notes": (row.get("notes") or "").strip(),
+                        "slug": code.lower().replace("_", "-"),
+                    }
+                # Every code (including regulations) feeds the cert-code lookup
+                # so parse_req_code() can classify any segment it sees.
+                self._cert_codes[code] = {
+                    "code": code,
+                    "kind": kind or "unknown",
+                    "name_en": (row.get("name_en") or "").strip(),
+                    "name_ar": (row.get("name_ar") or "").strip(),
+                    "description_en": (row.get("summary") or "").strip(),
+                    "pdf_link": (row.get("pdf_link") or "").strip(),
+                    "estimated_cost": (row.get("estimated_cost") or "").strip(),
+                    "estimated_time": (row.get("estimated_time") or "").strip(),
+                    "required_documents": (row.get("required_documents") or "").strip(),
+                    "step_by_step_guide": (row.get("step_by_step_guide") or "").strip(),
+                    "issuing_authorities": (row.get("issuing_authorities") or "").strip(),
+                    "notes": (row.get("notes") or "").strip(),
+                }
 
     def parse_req_code(self, req_code: str) -> dict:
         """Parse `REG-XXX|cert(-cert)*|extra*` into a structured breakdown.
@@ -312,16 +350,6 @@ class SearchEngine:
         except (json.JSONDecodeError, OSError):
             # Bad file shouldn't crash the engine
             pass
-
-    def _load_regulations(self) -> None:
-        path = self.data_dir / "regulations.csv"
-        with open(path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                rid = (row.get("regulation_id") or "").strip()
-                if not rid:
-                    continue
-                self._regulations[rid] = row
 
     def _load_parent_codes(self) -> None:
         path = self.data_dir / "parent_codes.csv"
