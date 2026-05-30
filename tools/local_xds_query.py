@@ -113,7 +113,6 @@ class LocalXDSQueryEngine:
             "certification_requirements_ar": detail.certification.phrase_ar,
             "product_classification": product_classification,
             "saber_links": saber_links,
-            "pdf_report_available": detail.pdf_report_available,
         }
 
         # Parent context — helps Claude orient the user
