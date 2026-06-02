@@ -253,11 +253,17 @@ class SearchEngine:
                     "description_en": (row.get("summary") or "").strip(),
                     "pdf_link": (row.get("pdf_link") or "").strip(),
                     "estimated_cost": (row.get("estimated_cost") or "").strip(),
+                    "estimated_cost_ar": (row.get("estimated_cost_ar") or "").strip(),
                     "estimated_time": (row.get("estimated_time") or "").strip(),
+                    "estimated_time_ar": (row.get("estimated_time_ar") or "").strip(),
                     "required_documents": (row.get("required_documents") or "").strip(),
+                    "required_documents_ar": (row.get("required_documents_ar") or "").strip(),
                     "step_by_step_guide": (row.get("step_by_step_guide") or "").strip(),
+                    "step_by_step_guide_ar": (row.get("step_by_step_guide_ar") or "").strip(),
                     "issuing_authorities": (row.get("issuing_authorities") or "").strip(),
+                    "issuing_authorities_ar": (row.get("issuing_authorities_ar") or "").strip(),
                     "notes": (row.get("notes") or "").strip(),
+                    "notes_ar": (row.get("notes_ar") or "").strip(),
                 }
 
     def parse_req_code(self, req_code: str) -> dict:
@@ -319,7 +325,11 @@ class SearchEngine:
         }
 
     def _cert_code_record(self, code: str) -> dict:
-        """Resolve a cert code to a small dict, falling back to bare code if unknown."""
+        """Resolve a cert code to a record that includes name, description, and
+        procedural fields (bilingual). Procedural fields are mostly populated
+        for the SABER cert codes; regulations have richer data in `summary`
+        and most procedural fields empty until RACS fills them.
+        """
         meta = self._cert_codes.get(code)
         if meta:
             return {
@@ -328,6 +338,18 @@ class SearchEngine:
                 "name_en": meta.get("name_en", ""),
                 "name_ar": meta.get("name_ar", ""),
                 "description_en": meta.get("description_en", ""),
+                "required_documents": meta.get("required_documents", ""),
+                "required_documents_ar": meta.get("required_documents_ar", ""),
+                "estimated_cost": meta.get("estimated_cost", ""),
+                "estimated_cost_ar": meta.get("estimated_cost_ar", ""),
+                "estimated_time": meta.get("estimated_time", ""),
+                "estimated_time_ar": meta.get("estimated_time_ar", ""),
+                "step_by_step_guide": meta.get("step_by_step_guide", ""),
+                "step_by_step_guide_ar": meta.get("step_by_step_guide_ar", ""),
+                "issuing_authorities": meta.get("issuing_authorities", ""),
+                "issuing_authorities_ar": meta.get("issuing_authorities_ar", ""),
+                "notes": meta.get("notes", ""),
+                "notes_ar": meta.get("notes_ar", ""),
             }
         return {"code": code, "kind": "unknown", "name_en": code, "name_ar": code, "description_en": ""}
 
